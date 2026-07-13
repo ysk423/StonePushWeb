@@ -274,8 +274,8 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
         <button id="btn-reset" type="button">↺ リセット</button>
       </div>
       <div class="board-grid">
-        <div class="border-label">ボーダー</div>
         ${boardOrder.map((bp, i) => renderBoard(bp, SCREEN_SLOT_LABELS[i], flipped, game, movableCells, destinationCells, dimmedBoards.has(bp))).join('')}
+        <div class="border-label">ボーダー</div>
       </div>
       ${isCpuThinking ? '<div class="cpu-thinking">CPU 思考中…</div>' : ''}
       ${game.phase === 'GAME_OVER' ? renderResult(game) : ''}

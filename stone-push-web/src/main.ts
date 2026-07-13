@@ -1,7 +1,7 @@
 import './style.css'
 import * as engine from './game/engine'
 import { chooseCpuTurn } from './game/ai'
-import type { BoardPosition, GameMode, GameState, Player, Pos } from './game/types'
+import type { BoardPosition, Direction, GameMode, GameState, Move, Player, Pos } from './game/types'
 import { posEquals } from './game/types'
 import { renderGame, renderRules, renderStart } from './ui/render'
 
@@ -9,8 +9,78 @@ type MainScreen = { screen: 'start' } | { screen: 'game'; game: GameState }
 type AppState = MainScreen | { screen: 'rules'; returnTo: MainScreen }
 
 let appState: AppState = { screen: 'start' }
+// フォロー（アグレッシブ移動）の押し出しアニメーション中は、盤面がまだ確定前の見た目のため操作を無効化する
+let isAnimating = false
 
 const root = document.querySelector<HTMLDivElement>('#app')!
+
+const PUSH_ANIMATION_MS = 260
+
+function findCellEl(boardPosition: BoardPosition, pos: Pos): HTMLElement | null {
+  return root.querySelector(`.cell[data-board="${boardPosition}"][data-row="${pos.row}"][data-col="${pos.col}"]`)
+}
+
+function findStoneEl(boardPosition: BoardPosition, pos: Pos): HTMLElement | null {
+  return findCellEl(boardPosition, pos)?.querySelector('.stone') ?? null
+}
+
+// fromEl の中心が toEl の中心に重なるための移動量(px)
+function centerOffset(fromEl: Element, toEl: Element): { dx: number; dy: number } {
+  const a = fromEl.getBoundingClientRect()
+  const b = toEl.getBoundingClientRect()
+  return { dx: b.left + b.width / 2 - (a.left + a.width / 2), dy: b.top + b.height / 2 - (a.top + a.height / 2) }
+}
+
+// 盤外へ消える石用：cellSizeRefEl（同じボード上の1マス）を基準に、方向1マス分の移動量を算出する
+function offBoardOffset(cellSizeRefEl: Element, dir: Direction): { dx: number; dy: number } {
+  const rect = cellSizeRefEl.getBoundingClientRect()
+  return { dx: rect.width * dir.dc, dy: rect.height * dir.dr }
+}
+
+function animateStone(el: HTMLElement, dx: number, dy: number, fadeOut: boolean): void {
+  el.style.transition = `transform ${PUSH_ANIMATION_MS}ms ease, opacity ${PUSH_ANIMATION_MS}ms ease`
+  el.style.zIndex = '5'
+  requestAnimationFrame(() => {
+    el.style.transform = `translate(${dx}px, ${dy}px)`
+    if (fadeOut) el.style.opacity = '0'
+  })
+}
+
+// アグレッシブ移動を「今表示されている盤面(beforeState)」から見た目だけアニメーションしてから、commitで最終状態を確定する。
+// beforeStateは現在renderGame済みのDOMと一致している必要がある（移動元・押し出し対象の石要素を探すため）
+function animatePushThenApply(beforeState: GameState, move: Move, commit: () => void): void {
+  const moverEl = findStoneEl(move.boardPosition, move.from)
+  const destCellEl = findCellEl(move.boardPosition, move.to)
+  if (!moverEl || !destCellEl) {
+    commit()
+    return
+  }
+
+  isAnimating = true
+  const moverOffset = centerOffset(moverEl, destCellEl)
+  animateStone(moverEl, moverOffset.dx, moverOffset.dy, false)
+
+  const preview = engine.previewAggressiveMove(beforeState, move)
+  if (preview.pushedFrom) {
+    const pushedEl = findStoneEl(move.boardPosition, preview.pushedFrom)
+    if (pushedEl) {
+      if (preview.pushedTo) {
+        const pushedDestCellEl = findCellEl(move.boardPosition, preview.pushedTo)
+        const offset = pushedDestCellEl ? centerOffset(pushedEl, pushedDestCellEl) : offBoardOffset(destCellEl, move.direction)
+        animateStone(pushedEl, offset.dx, offset.dy, false)
+      } else {
+        // 盤外へ押し出されて消滅
+        const offset = offBoardOffset(destCellEl, move.direction)
+        animateStone(pushedEl, offset.dx, offset.dy, true)
+      }
+    }
+  }
+
+  window.setTimeout(() => {
+    isAnimating = false
+    commit()
+  }, PUSH_ANIMATION_MS)
+}
 
 function setState(next: AppState): void {
   appState = next
@@ -56,6 +126,7 @@ function isHumanTurn(game: GameState): boolean {
 }
 
 function handleCellClick(boardPosition: BoardPosition, pos: Pos): void {
+  if (isAnimating) return
   if (appState.screen !== 'game') return
   const game = appState.game
   if (game.phase === 'GAME_OVER' || !isHumanTurn(game)) return
@@ -105,7 +176,8 @@ function handleCellClick(boardPosition: BoardPosition, pos: Pos): void {
       .legalAggressiveMoves(game, game.passiveMove)
       .find((m) => m.boardPosition === sel.boardPosition && posEquals(m.from, sel.pos) && m.boardPosition === boardPosition && posEquals(m.to, pos))
     if (chosen) {
-      setState({ screen: 'game', game: engine.applyAggressiveMove(game, chosen) })
+      const after = engine.applyAggressiveMove(game, chosen)
+      animatePushThenApply(game, chosen, () => setState({ screen: 'game', game: after }))
     } else {
       setState({ screen: 'game', game: engine.cancelAggressiveAndRevertPassive(game) })
     }
@@ -113,6 +185,7 @@ function handleCellClick(boardPosition: BoardPosition, pos: Pos): void {
 }
 
 function handleCancel(): void {
+  if (isAnimating) return
   if (appState.screen !== 'game') return
   const game = appState.game
   if (game.phase === 'PASSIVE_CONFIRM') setState({ screen: 'game', game: engine.cancelPassiveSelection(game) })
@@ -132,7 +205,8 @@ function scheduleCpuTurnIfNeeded(): void {
     const { passiveMove, aggressiveMove } = chooseCpuTurn(current)
     const afterPassive = engine.applyPassiveMove(current, passiveMove)
     const afterAggressive = engine.applyAggressiveMove(afterPassive, aggressiveMove)
-    setState({ screen: 'game', game: afterAggressive })
+    // アグレッシブ移動の対象ボードはパッシブ移動の影響を受けないため、現在表示中(current)のDOMからそのままアニメーションできる
+    animatePushThenApply(current, aggressiveMove, () => setState({ screen: 'game', game: afterAggressive }))
   }, 500)
 }
 

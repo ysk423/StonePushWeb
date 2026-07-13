@@ -134,6 +134,19 @@ function resolveAggressiveMove(
   return { destination: dest, pushedEnemyFrom: enemyPos, pushedEnemyTo: null }
 }
 
+export interface AggressiveMovePreview {
+  pushedFrom: Pos | null
+  pushedTo: Pos | null // null = 盤外へ押し出され消滅
+}
+
+// applyAggressiveMoveを実際に適用せず、押し出しの発生有無・位置だけを知りたい場合に使う（UI側のアニメーション用）
+export function previewAggressiveMove(state: GameState, move: Move): AggressiveMovePreview {
+  const board = state.boards[move.boardPosition]
+  const resolution = resolveAggressiveMove(board, state.currentPlayer, move.from, move.direction, move.steps)
+  if (!resolution) throw new Error('不正なアグレッシブ移動です')
+  return { pushedFrom: resolution.pushedEnemyFrom, pushedTo: resolution.pushedEnemyTo }
+}
+
 // パッシブ移動に対応する合法アグレッシブ移動を列挙（逆色ボード×自分の石）
 export function legalAggressiveMoves(state: GameState, passiveMove: Move): Move[] {
   const player = state.currentPlayer

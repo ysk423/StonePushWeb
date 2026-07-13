@@ -137,6 +137,7 @@ Android版の `GameState` と異なり、`selectedPassiveFrom` / `passiveMove` /
 | `selectAggressiveStone(state, boardPosition, pos)` | `AGGRESSIVE_SELECT` → `AGGRESSIVE_CONFIRM`（方向・歩数はpassiveMove由来で固定のため移動先は一意に決まる） |
 | `cancelAggressiveSelection(state)` | `AGGRESSIVE_CONFIRM` → `AGGRESSIVE_SELECT`（選択解除のみ、パッシブ移動は維持） |
 | `cancelAggressiveAndRevertPassive(state)` | `AGGRESSIVE_SELECT` / `AGGRESSIVE_CONFIRM` → `PASSIVE_SELECT`（パッシブ移動を手動で逆適用） |
+| `previewAggressiveMove(state, move)` | 状態を変更せず、そのアグレッシブ移動で石が押し出されるか（`pushedFrom`/`pushedTo`）だけを返す。内部で`applyAggressiveMove`と同じ`resolveAggressiveMove`を再利用しており、押し出し判定ロジックの二重実装を避けている。UI側の押し出しアニメーション（`main.ts`の`animatePushThenApply`）が使用 |
 
 ### デッドエンドフィルタの実装方式
 
@@ -233,7 +234,18 @@ render() の最後で毎回呼ばれる
 
 `render()` はステート変更のたびに1回しか呼ばれないため、CPU手番の間だけ重複してタイマーが積み上がることはない（CPU手番中は人間側の操作が無効化されており、次にrenderが呼ばれるのはCPUの手が適用された後＝再びcurrentPlayerが人間になった後）。
 
-CPUの手（パッシブ→アグレッシブ）は演出無しで連続適用され、アニメーションは実装していない。
+CPUの手のうちパッシブ移動は演出無しで即時適用されるが、アグレッシブ移動（フォロー）は人間側と同じ`animatePushThenApply`で押し出しアニメーションを再生してから確定する（下記参照）。
+
+### 押し出しアニメーション（`main.ts`の`animatePushThenApply`）
+
+`innerHTML`による全体再描画方式ではDOM要素がstateごとに作り直されるため、CSS transitionでは前後の状態を跨いだアニメーションができない。そこで、状態を確定する（`setState`を呼ぶ）前に、**今まさに画面に表示されているDOM**を直接操作して石をアニメーションさせ、アニメーション終了後（`PUSH_ANIMATION_MS`=260ms後）に初めて`setState`で最終状態を確定して通常の全体再描画を行う、という2段階の設計にしている。
+
+1. `engine.previewAggressiveMove(beforeState, move)`で、押し出しの有無・押し出し先（盤外なら`null`）を取得（盤面は変更しない）
+2. 移動する石の要素と移動先セルの`getBoundingClientRect()`から中心間の距離(px)を算出し、`transform: translate()`で滑らせる
+3. 押し出される石があれば、同様に押し出し先セル（盤外の場合は移動先セルの1マス分のサイズ×移動方向で外挿）まで移動させつつ、盤外に消える場合は`opacity`を0にフェードアウト
+4. アニメーション中は`isAnimating`フラグでクリック・キャンセル操作を無効化し、状態の二重更新を防ぐ
+
+人間側・CPU側とも、アニメーション開始時点で画面に表示されている状態（`beforeState`）をそのまま使う。CPU側はパッシブ移動とアグレッシブ移動を同時に計算するが、アグレッシブ移動の対象ボードはパッシブ移動の対象ボードと必ず逆色（＝別ボード）のため、パッシブ移動適用前の`current`をそのままアニメーションの基準として使ってよい（中間状態を描画する必要が無い）。
 
 ### 描画（`ui/render.ts`）
 
@@ -275,6 +287,10 @@ CSS変数でボード配色を定義（`--board-dark` / `--board-light` / `--bor
 「ボーダー」＝黒ホームと白ホームの上下の境目、という意味を明確にするため、強調（`var(--border-line)` の6px枠線）は上段2枚と下段2枚の間（`.board-grid .board:nth-child(-n+2)` の `border-bottom` と `:nth-child(n+3)` の `border-top`）にのみ適用し、左右のDARK/LIGHTの区切りは通常の1px薄枠（`#e5e4e7`）のまま強調しない。`.rules-board-diagram` の図解にも同じ考え方を適用している。
 
 移動先マーク（`.cell.destination`）は、以前は中央に半透明の丸を重ねていたが、押し出し対象（マス上に相手の石がある場合）だと石の`z-index`に隠れて見えなくなる問題があったため、セル全体を囲む枠線（`box-shadow: inset`）方式に変更した。石の有無にかかわらず常に視認できる。
+
+上下境目の強調（`.board-grid .board:nth-child(-n+2)` / `:nth-child(n+3)`）は、`.board-grid` 内で `.board` 要素だけを兄弟として数える必要があるため、`.border-label` は必ず4枚のボードより後（DOM上で5番目の子要素）に置くこと。先に置くと `nth-child` の位置がずれ、意図しないボードに境界線が付いてしまう（実際に起きた不具合）。
+
+`.result-overlay`（結果ダイアログ）には `z-index: 100` を明示している。`.stone`（z-index:1）や `.border-label`（z-index:2）は、祖先要素（`.cell` `.board` `.board-grid` `#game-screen` など）がいずれもスタッキングコンテキストを確立しない（`position`はあっても`z-index`が`auto`のため）ため、実質的にルートのスタッキングコンテキストで比較され、`z-index`指定の無い`.result-overlay`より前面に出てしまっていた。
 
 アニメーション（`transition`）は `.board` の `opacity` にのみ使用しており、石の移動・押し出しにはアニメーションを付けていない（拡張3で対応予定）。
 
