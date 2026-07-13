@@ -1,0 +1,90 @@
+(function(){let e=document.createElement(`link`).relList;if(e&&e.supports&&e.supports(`modulepreload`))return;for(let e of document.querySelectorAll(`link[rel="modulepreload"]`))n(e);new MutationObserver(e=>{for(let t of e)if(t.type===`childList`)for(let e of t.addedNodes)e.tagName===`LINK`&&e.rel===`modulepreload`&&n(e)}).observe(document,{childList:!0,subtree:!0});function t(e){let t={};return e.integrity&&(t.integrity=e.integrity),e.referrerPolicy&&(t.referrerPolicy=e.referrerPolicy),e.crossOrigin===`use-credentials`?t.credentials=`include`:e.crossOrigin===`anonymous`?t.credentials=`omit`:t.credentials=`same-origin`,t}function n(e){if(e.ep)return;e.ep=!0;let n=t(e);fetch(e.href,n)}})();var e=[{dr:-1,dc:-1},{dr:-1,dc:0},{dr:-1,dc:1},{dr:0,dc:-1},{dr:0,dc:1},{dr:1,dc:-1},{dr:1,dc:0},{dr:1,dc:1}],t=[`TOP_LEFT`,`TOP_RIGHT`,`BOTTOM_LEFT`,`BOTTOM_RIGHT`],n={TOP_LEFT:`DARK`,TOP_RIGHT:`LIGHT`,BOTTOM_LEFT:`LIGHT`,BOTTOM_RIGHT:`DARK`},r={TOP_LEFT:`WHITE`,TOP_RIGHT:`WHITE`,BOTTOM_LEFT:`BLACK`,BOTTOM_RIGHT:`BLACK`};function i(e){return`${e.row}_${e.col}`}function a(e,t){return e.row===t.row&&e.col===t.col}function o(e){return e.row>=0&&e.row<4&&e.col>=0&&e.col<4}function s(e){return e===`BLACK`?`WHITE`:`BLACK`}function c(e){return t.filter(t=>r[t]===e)}function l(e){let r=e===`DARK`?`LIGHT`:`DARK`;return t.filter(e=>n[e]===r)}function u(e,t){return e.stones[i(t)]}function d(e){return{...e,stones:{...e.stones}}}function f(e){let n={};for(let r of t)n[r]=d(e[r]);return n}function p(e,t,n){return{row:e.row+t.dr*n,col:e.col+t.dc*n}}function m(e,r,a,o=`BLACK`){let s={};for(let e of t){let t={};for(let e=0;e<4;e++)t[i({row:3,col:e})]=`BLACK`,t[i({row:0,col:e})]=`WHITE`;s[e]={position:e,color:n[e],stones:t}}return{boards:s,currentPlayer:o,phase:`PASSIVE_SELECT`,mode:e,difficulty:r,humanPlayer:a,selectedPassiveFrom:null,passiveMove:null,winner:null}}function h(e,t,n,r){let i=p(t,n,r);return!o(i)||(r===2?[p(t,n,1),i]:[i]).some(t=>u(e,t)!==void 0)?null:i}function g(t,n){let r=[];for(let i of Object.keys(t.stones)){if(t.stones[i]!==n)continue;let[a,o]=i.split(`_`).map(Number),s={row:a,col:o};for(let n of e)for(let e of[1,2]){let i=h(t,s,n,e);i&&r.push({boardPosition:t.position,from:s,to:i,direction:n,steps:e})}}return r}function _(e,t,n,r,i){let a=p(n,r,i);if(!o(a))return null;let c=s(t),l=i===2?[p(n,r,1),a]:[a];if(l.some(n=>u(e,n)===t))return null;let d=l.filter(t=>u(e,t)===c);if(d.length>1)return null;if(d.length===0)return{destination:a,pushedEnemyFrom:null,pushedEnemyTo:null};let f=d[0],m=p(a,r,1);return o(m)?u(e,m)===void 0?{destination:a,pushedEnemyFrom:f,pushedEnemyTo:m}:null:{destination:a,pushedEnemyFrom:f,pushedEnemyTo:null}}function v(e,t){let r=e.currentPlayer,i=l(n[t.boardPosition]),a=[];for(let n of i){let i=e.boards[n];for(let e of Object.keys(i.stones)){if(i.stones[e]!==r)continue;let[o,s]=e.split(`_`).map(Number),c={row:o,col:s},l=_(i,r,c,t.direction,t.steps);l&&a.push({boardPosition:n,from:c,to:l.destination,direction:t.direction,steps:t.steps})}}return a}function y(e){let t=e.currentPlayer,n=[];for(let r of c(t))n.push(...g(e.boards[r],t));return n.filter(t=>v(e,t).length>0)}function b(e,t){let n=f(e.boards),r=n[t.boardPosition];return delete r.stones[i(t.from)],r.stones[i(t.to)]=e.currentPlayer,{...e,boards:n,phase:`AGGRESSIVE_SELECT`,selectedPassiveFrom:null,passiveMove:t}}function x(e,t){let n=e.currentPlayer,r=f(e.boards),a=e.boards[t.boardPosition],o=_(a,n,t.from,t.direction,t.steps);if(!o)throw Error(`不正なアグレッシブ移動です`);let c=r[t.boardPosition];delete c.stones[i(t.from)],o.pushedEnemyFrom&&(delete c.stones[i(o.pushedEnemyFrom)],o.pushedEnemyTo&&(c.stones[i(o.pushedEnemyTo)]=s(n))),c.stones[i(o.destination)]=n;let l=S(r);return l?{...e,boards:r,phase:`GAME_OVER`,winner:l,passiveMove:null,selectedPassiveFrom:null}:{...e,boards:r,phase:`PASSIVE_SELECT`,currentPlayer:s(n),passiveMove:null,selectedPassiveFrom:null}}function S(e){for(let n of t){let t=e[n],r=Object.values(t.stones).filter(e=>e===`BLACK`).length,i=Object.values(t.stones).filter(e=>e===`WHITE`).length;if(r===0)return`WHITE`;if(i===0)return`BLACK`}return null}function C(e,t,n){return{...e,phase:`PASSIVE_CONFIRM`,selectedPassiveFrom:{boardPosition:t,pos:n}}}function w(e){return{...e,phase:`PASSIVE_SELECT`,selectedPassiveFrom:null}}function T(e){if(!e.passiveMove)return e;let t=f(e.boards),n=t[e.passiveMove.boardPosition];return delete n.stones[i(e.passiveMove.to)],n.stones[i(e.passiveMove.from)]=e.currentPlayer,{...e,boards:t,phase:`PASSIVE_SELECT`,passiveMove:null,selectedPassiveFrom:null}}function E(e){return e[Math.floor(Math.random()*e.length)]}function D(e){let t=y(e);if(t.length===0)throw Error(`CPU: 合法なパッシブ移動がありません`);let n=E(t),r=v(e,n);if(r.length===0)throw Error(`CPU: デッドエンドでないはずのパッシブ移動でアグレッシブ移動が見つかりません`);return{passiveMove:n,aggressiveMove:E(r)}}var O={TOP_LEFT:`左上`,TOP_RIGHT:`右上`,BOTTOM_LEFT:`左下`,BOTTOM_RIGHT:`右下`},k={BLACK:`黒`,WHITE:`白`};function A(e,t){e.innerHTML=`
+    <section id="start-screen">
+      <h1>Stone Push</h1>
+      <div class="start-menu">
+        <button id="btn-vs-human" type="button" class="menu-btn">vs 人間（パス＆プレイ）</button>
+        <div class="vs-cpu-group">
+          <p>vs CPU（やさしい）</p>
+          <button id="btn-vs-cpu-black" type="button" class="menu-btn">先攻（黒）でプレイ</button>
+          <button id="btn-vs-cpu-white" type="button" class="menu-btn">後攻（白）でプレイ</button>
+        </div>
+        <button id="btn-rules" type="button" class="menu-btn menu-btn-secondary">ℹ ルール説明</button>
+      </div>
+    </section>
+  `,e.querySelector(`#btn-vs-human`).addEventListener(`click`,()=>t.onStart(`VS_HUMAN`,`BLACK`)),e.querySelector(`#btn-vs-cpu-black`).addEventListener(`click`,()=>t.onStart(`VS_CPU`,`BLACK`)),e.querySelector(`#btn-vs-cpu-white`).addEventListener(`click`,()=>t.onStart(`VS_CPU`,`WHITE`)),e.querySelector(`#btn-rules`).addEventListener(`click`,t.onOpenRules)}function j(e,t){e.innerHTML=`
+    <section id="rules-screen">
+      <div class="toolbar">
+        <button id="btn-rules-back" type="button">← 戻る</button>
+        <div class="phase-indicator">ルール説明</div>
+        <span></span>
+      </div>
+
+      <div class="rules-content">
+        <h2>1. 盤面構成</h2>
+        <p>4×4のボードが2×2で合計4枚並ぶ。左上と右下が <strong>DARK</strong>、右上と左下が <strong>LIGHT</strong>（対角が同色）。上段2枚が白のホーム、下段2枚が黒のホーム。</p>
+        <div class="rules-board-diagram">
+          <div class="rules-board-cell board-dark">左上（DARK）<br>白ホーム</div>
+          <div class="rules-board-cell board-light">右上（LIGHT）<br>白ホーム</div>
+          <div class="rules-board-cell board-light">左下（LIGHT）<br>黒ホーム</div>
+          <div class="rules-board-cell board-dark">右下（DARK）<br>黒ホーム</div>
+        </div>
+        <p class="rules-caption">中央の境界線が「ロープライン」。初期配置は全4ボード共通で、黒は一番手前の行、白は一番奥の行に4個ずつ並ぶ。</p>
+
+        <h2>2. ターンの流れ</h2>
+        <p>1ターン＝「セット（パッシブ移動）」と「プッシュ（アグレッシブ移動）」を<strong>必ず両方</strong>行う。先手は黒。</p>
+
+        <h2>3. セット（パッシブ移動）</h2>
+        <ul>
+          <li>自分のホームボード（2枚のうちどちらか）で、自分の石を1つ選ぶ</li>
+          <li>縦・横・斜め（8方向）に1〜2マス動かす</li>
+          <li>途中のマスや移動先に石がある場合は動かせない（押せない・飛び越せない）</li>
+          <li>自分の石をボード外に出すことはできない</li>
+        </ul>
+
+        <h2>4. プッシュ（アグレッシブ移動）</h2>
+        <ul>
+          <li>セットで使ったボードと<strong>逆色</strong>のボード（自分・相手どちらのホームでもよい）で行う</li>
+          <li>移動方向・歩数はセットと<strong>同じ</strong>（変更不可）</li>
+          <li>相手の石は1個までなら押し出せる（押さなくてもよい）</li>
+          <li>相手の石を2個以上連続で押すことはできない</li>
+          <li>自分の石を途中や目的地に押す・飛び越すことはできない</li>
+          <li>押し出された相手の石はボード外に消える（復活しない）</li>
+        </ul>
+        <p class="rules-caption">セットした結果、プッシュできる手が1つも無い場合、そのセット自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。</p>
+
+        <h2>5. 勝利条件</h2>
+        <p>4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。</p>
+      </div>
+    </section>
+  `,e.querySelector(`#btn-rules-back`).addEventListener(`click`,t.onBack)}function M(e,t){return`${e}:${i(t)}`}function N(e){let t=new Set;if(e.phase===`PASSIVE_SELECT`)for(let n of y(e))t.add(M(n.boardPosition,n.from));else if(e.phase===`AGGRESSIVE_SELECT`&&e.passiveMove)for(let n of v(e,e.passiveMove))t.add(M(n.boardPosition,n.from));return t}function P(e){let t=new Set;if(e.phase===`PASSIVE_CONFIRM`&&e.selectedPassiveFrom){let n=e.selectedPassiveFrom;for(let r of y(e))r.boardPosition===n.boardPosition&&a(r.from,n.pos)&&t.add(M(r.boardPosition,r.to))}else if(e.phase===`AGGRESSIVE_SELECT`&&e.passiveMove)for(let n of v(e,e.passiveMove))t.add(M(n.boardPosition,n.to));return t}function F(e){let r=new Set;if(e.phase===`AGGRESSIVE_SELECT`&&e.passiveMove){let i=n[e.passiveMove.boardPosition];for(let e of t)n[e]===i&&r.add(e)}return r}function I(e){switch(e.phase){case`PASSIVE_SELECT`:return`動かす石を選んでください（セット）`;case`PASSIVE_CONFIRM`:return`移動先を選んでください（セット）`;case`AGGRESSIVE_SELECT`:return`逆色のボードで移動先を選んでください（プッシュ）`;case`GAME_OVER`:return`ゲーム終了`}}function L(e,t,n,r,o){let s=t.boards[e],c=0,l=0;for(let e of Object.values(s.stones))e===`BLACK`?c++:e===`WHITE`&&l++;let u=[];for(let o=0;o<4;o++)for(let c=0;c<4;c++){let l={row:o,col:c},d=s.stones[i(l)],f=M(e,l),p=n.has(f),m=r.has(f),h=!!t.selectedPassiveFrom&&t.selectedPassiveFrom.boardPosition===e&&a(t.selectedPassiveFrom.pos,l),g=t.phase===`PASSIVE_SELECT`&&d===t.currentPlayer&&!p,_=[`cell`];d&&_.push(`stone-${d.toLowerCase()}`),p&&_.push(`movable`),h&&_.push(`selected`),m&&_.push(`destination`),g&&_.push(`dimmed-stone`),u.push(`<div class="${_.join(` `)}" data-board="${e}" data-row="${o}" data-col="${c}">${d?`<span class="stone"></span>`:``}</div>`)}return`
+    <div class="board ${s.color===`DARK`?`board-dark`:`board-light`} ${o?`board-dimmed`:``}" data-board="${e}">
+      <div class="board-header">
+        <span class="board-name">${O[e]}</span>
+        <span class="board-count">黒:${c} 白:${l}</span>
+      </div>
+      <div class="board-cells">${u.join(``)}</div>
+    </div>
+  `}function R(e){return`
+    <div class="result-overlay">
+      <div class="result-card">
+        <h2>${e.winner?k[e.winner]:``}の勝利！</h2>
+        <button id="btn-play-again" type="button" class="menu-btn">もう一度</button>
+        <button id="btn-to-menu" type="button" class="menu-btn">メニューに戻る</button>
+      </div>
+    </div>
+  `}function z(e,n,r){let i=n.mode===`VS_CPU`&&n.currentPlayer!==n.humanPlayer&&n.phase!==`GAME_OVER`,a=n.phase===`PASSIVE_CONFIRM`||n.phase===`AGGRESSIVE_SELECT`,o=N(n),s=P(n),c=F(n);e.innerHTML=`
+    <section id="game-screen">
+      <div class="toolbar">
+        <button id="btn-back" type="button">← 戻る</button>
+        <div class="phase-indicator">${k[n.currentPlayer]}の番 ・ ${I(n)}</div>
+        <button id="btn-cancel" type="button" ${a?``:`disabled`}>✕ キャンセル</button>
+        <button id="btn-rules" type="button">ℹ ルール</button>
+        <button id="btn-reset" type="button">↺ リセット</button>
+      </div>
+      ${i?`<div class="cpu-thinking">CPU 思考中…</div>`:``}
+      <div class="board-grid">
+        ${t.map(e=>L(e,n,o,s,c.has(e))).join(``)}
+      </div>
+      ${n.phase===`GAME_OVER`?R(n):``}
+    </section>
+  `,e.querySelectorAll(`.cell`).forEach(e=>{e.addEventListener(`click`,()=>{let t=e.dataset.board,n=Number(e.dataset.row),i=Number(e.dataset.col);r.onCellClick(t,{row:n,col:i})})}),e.querySelector(`#btn-back`)?.addEventListener(`click`,r.onBackToMenu),e.querySelector(`#btn-cancel`)?.addEventListener(`click`,r.onCancel),e.querySelector(`#btn-rules`)?.addEventListener(`click`,r.onOpenRules),e.querySelector(`#btn-reset`)?.addEventListener(`click`,r.onReset),e.querySelector(`#btn-play-again`)?.addEventListener(`click`,r.onReset),e.querySelector(`#btn-to-menu`)?.addEventListener(`click`,r.onBackToMenu)}var B={screen:`start`},V=document.querySelector(`#app`);function H(e){B=e,U()}function U(){if(B.screen===`start`){A(V,{onStart:G,onOpenRules:()=>W(B)});return}if(B.screen===`rules`){let e=B.returnTo;j(V,{onBack:()=>H(e)});return}z(V,B.game,{onCellClick:J,onCancel:Y,onReset:K,onBackToMenu:()=>H({screen:`start`}),onOpenRules:()=>W(B)}),X()}function W(e){H({screen:`rules`,returnTo:e})}function G(e,t){H({screen:`game`,game:m(e,`EASY`,t,`BLACK`)})}function K(){if(B.screen!==`game`)return;let{mode:e,difficulty:t,humanPlayer:n}=B.game;H({screen:`game`,game:m(e,t,n,`BLACK`)})}function q(e){return e.mode===`VS_HUMAN`||e.currentPlayer===e.humanPlayer}function J(e,t){if(B.screen!==`game`)return;let n=B.game;if(!(n.phase===`GAME_OVER`||!q(n))){if(n.phase===`PASSIVE_SELECT`){y(n).some(n=>n.boardPosition===e&&a(n.from,t))&&H({screen:`game`,game:C(n,e,t)});return}if(n.phase===`PASSIVE_CONFIRM`&&n.selectedPassiveFrom){let r=n.selectedPassiveFrom;if(r.boardPosition===e&&a(r.pos,t)){H({screen:`game`,game:w(n)});return}let i=y(n).find(n=>n.boardPosition===r.boardPosition&&a(n.from,r.pos)&&n.boardPosition===e&&a(n.to,t));i&&H({screen:`game`,game:b(n,i)});return}if(n.phase===`AGGRESSIVE_SELECT`&&n.passiveMove){let r=v(n,n.passiveMove).find(n=>n.boardPosition===e&&a(n.to,t));H(r?{screen:`game`,game:x(n,r)}:{screen:`game`,game:T(n)})}}}function Y(){if(B.screen!==`game`)return;let e=B.game;e.phase===`PASSIVE_CONFIRM`?H({screen:`game`,game:w(e)}):e.phase===`AGGRESSIVE_SELECT`&&H({screen:`game`,game:T(e)})}function X(){if(B.screen!==`game`)return;let e=B.game;e.mode!==`VS_CPU`||e.phase===`GAME_OVER`||e.currentPlayer===e.humanPlayer||window.setTimeout(()=>{if(B.screen!==`game`)return;let e=B.game;if(e.mode!==`VS_CPU`||e.phase===`GAME_OVER`||e.currentPlayer===e.humanPlayer)return;let{passiveMove:t,aggressiveMove:n}=D(e);H({screen:`game`,game:x(b(e,t),n)})},500)}U();
