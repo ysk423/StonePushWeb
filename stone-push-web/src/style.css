@@ -41,6 +41,17 @@ body {
   text-align: center;
 }
 
+/* Top画面の装飾イラスト（初期盤面をそのまま静的表示、クリック不可） */
+.start-illustration {
+  width: 100%;
+  max-width: 220px;
+  pointer-events: none;
+}
+
+.start-illustration .board-header {
+  display: none;
+}
+
 .start-menu {
   display: flex;
   flex-direction: column;
@@ -107,8 +118,6 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 3px;
-  background: var(--border-line);
-  border: 3px solid var(--border-line);
   border-radius: 4px;
   max-width: 280px;
   margin: 12px 0;
@@ -122,6 +131,16 @@ body {
   text-align: center;
   font-size: 0.75rem;
   padding: 8px;
+  border: 1px solid #e5e4e7;
+}
+
+/* 「ボーダー」＝黒ホームと白ホームの上下の境目のみを太く強調する（左右のDARK/LIGHT区切りは強調しない） */
+.rules-board-diagram .rules-board-cell:nth-child(-n+2) {
+  border-bottom: 6px solid var(--border-line);
+}
+
+.rules-board-diagram .rules-board-cell:nth-child(n+3) {
+  border-top: 6px solid var(--border-line);
 }
 
 .rules-board-cell.board-dark {
@@ -186,12 +205,10 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 3px;
-  background: var(--border-line);
-  border: 3px solid var(--border-line);
   border-radius: 4px;
 }
 
-/* 4ボードの中央交点＝「ボーダー」の位置を示すラベル */
+/* 上下の境目（＝黒ホームと白ホームの境目）の位置を示すラベル。左右の境目には出さない */
 .border-label {
   position: absolute;
   top: 50%;
@@ -210,6 +227,16 @@ body {
   background: #fff;
   padding: 4px;
   transition: opacity 0.15s;
+  border: 1px solid #e5e4e7;
+}
+
+/* 「ボーダー」＝黒ホームと白ホームの上下の境目のみを太く強調する（左右のDARK/LIGHT区切りは強調しない） */
+.board-grid .board:nth-child(-n+2) {
+  border-bottom: 6px solid var(--border-line);
+}
+
+.board-grid .board:nth-child(n+3) {
+  border-top: 6px solid var(--border-line);
 }
 
 .board-dimmed {
@@ -222,6 +249,12 @@ body {
   justify-content: space-between;
   font-size: 0.75rem;
   padding: 0 2px 4px;
+}
+
+/* 残り1個＝あと1回押し出されると敗北する危険な状態であることを示す */
+.count-danger {
+  color: #d32f2f;
+  font-weight: 700;
 }
 
 .board-cells {
@@ -258,18 +291,10 @@ body {
   box-shadow: inset 0 0 0 3px #ffa726;
 }
 
+/* 石が乗っているマス（押し出し対象）でも見えるよう、中央の丸ではなく枠線で移動先を示す */
 .cell.destination {
   cursor: pointer;
-}
-
-.cell.destination::after {
-  content: '';
-  position: absolute;
-  width: 40%;
-  height: 40%;
-  border-radius: 50%;
-  background: var(--destination);
-  opacity: 0.7;
+  box-shadow: inset 0 0 0 3px var(--destination);
 }
 
 .stone {

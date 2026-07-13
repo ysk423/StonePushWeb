@@ -1,5 +1,5 @@
 // 画面描画（DOM操作専用。ゲームロジックは game/ 側の純粋関数を呼ぶだけ）
-import { legalAggressiveMoves, legalPassiveMoves } from '../game/engine'
+import { initialState, legalAggressiveMoves, legalPassiveMoves } from '../game/engine'
 import {
   ALL_BOARD_POSITIONS,
   BOARD_COLOR_OF,
@@ -30,19 +30,30 @@ export interface RulesHandlers {
   onBack: () => void
 }
 
-const BOARD_LABEL: Record<BoardPosition, string> = {
-  TOP_LEFT: '左上',
-  TOP_RIGHT: '右上',
-  BOTTOM_LEFT: '左下',
-  BOTTOM_RIGHT: '右下',
-}
+// 画面上の描画スロット（左上→右上→左下→右下）のラベル。boardRenderOrder()の並びと対応する
+const SCREEN_SLOT_LABELS = ['左上', '右上', '左下', '右下']
 
 const PLAYER_LABEL: Record<Player, string> = { BLACK: '黒', WHITE: '白' }
 
+// 後攻（白）でプレイする場合は自陣（白ホーム）が画面下側に来るよう上下の並びを入れ替える。左右のDARK/LIGHT配置は変えない
+function boardRenderOrder(flipped: boolean): BoardPosition[] {
+  return flipped ? ['BOTTOM_LEFT', 'BOTTOM_RIGHT', 'TOP_LEFT', 'TOP_RIGHT'] : ALL_BOARD_POSITIONS
+}
+
 export function renderStart(container: HTMLElement, handlers: StartHandlers): void {
+  // スタート画面の装飾イラスト：実際の初期盤面をそのまま静的表示（操作不可）に流用
+  const illustrationGame = initialState('VS_HUMAN', 'EASY', 'BLACK', 'BLACK')
+  const emptyCells = new Set<string>()
+  const illustrationBoards = ALL_BOARD_POSITIONS.map((bp, i) =>
+    renderBoard(bp, SCREEN_SLOT_LABELS[i], false, illustrationGame, emptyCells, emptyCells, false),
+  ).join('')
+
   container.innerHTML = `
     <section id="start-screen">
       <h1>Stone Push</h1>
+      <div class="start-illustration" aria-hidden="true">
+        <div class="board-grid">${illustrationBoards}</div>
+      </div>
       <div class="start-menu">
         <button id="btn-vs-human" type="button" class="menu-btn">vs 人間（パス＆プレイ）</button>
         <div class="vs-cpu-group">
@@ -81,9 +92,9 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers): vo
         <p class="rules-caption">中央の境界線が「ボーダー」（対局画面にも同じ位置に表示される）。初期配置は全4ボード共通で、黒は一番手前の行、白は一番奥の行に4個ずつ並ぶ。</p>
 
         <h2>2. ターンの流れ</h2>
-        <p>1ターン＝「リード（パッシブ移動）」と「フォロー（アグレッシブ移動）」を<strong>必ず両方</strong>行う。先手は黒。</p>
+        <p>1ターン＝「リード」と「フォロー」を<strong>必ず両方</strong>行う。先手は黒。</p>
 
-        <h2>3. リード（パッシブ移動）</h2>
+        <h2>3. リード</h2>
         <ul>
           <li>自分のホームボード（2枚のうちどちらか）で、自分の石を1つ選ぶ</li>
           <li>縦・横・斜め（8方向）に1〜2マス動かす</li>
@@ -91,7 +102,7 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers): vo
           <li>自分の石をボード外に出すことはできない</li>
         </ul>
 
-        <h2>4. フォロー（アグレッシブ移動）</h2>
+        <h2>4. フォロー</h2>
         <ul>
           <li>リードで使ったボードと<strong>逆色</strong>のボード（自分・相手どちらのホームでもよい）で行う</li>
           <li>動かす石を選ぶと、移動方向・歩数はリードと<strong>同じ</strong>に固定されるため、移動先は自動的に1マスに決まる（確認のうえタップで確定）</li>
@@ -171,6 +182,8 @@ function phaseLabel(game: GameState): string {
 
 function renderBoard(
   bp: BoardPosition,
+  screenLabel: string,
+  flipped: boolean,
   game: GameState,
   movableCells: Set<string>,
   destinationCells: Set<string>,
@@ -185,7 +198,9 @@ function renderBoard(
   }
 
   const cells: string[] = []
-  for (let row = 0; row < BOARD_SIZE; row++) {
+  for (let visualRow = 0; visualRow < BOARD_SIZE; visualRow++) {
+    // flipped時は行の描画順を反転させるだけで、内部座標(pos)は常に本来のrow/colのまま扱う
+    const row = flipped ? BOARD_SIZE - 1 - visualRow : visualRow
     for (let col = 0; col < BOARD_SIZE; col++) {
       const pos: Pos = { row, col }
       const owner = board.stones[posKey(pos)]
@@ -211,11 +226,14 @@ function renderBoard(
   }
 
   const colorClass = board.color === 'DARK' ? 'board-dark' : 'board-light'
+  // 残り1個＝次に押し出されたら敗北の危険な状態として数字を赤く強調する
+  const blackCountClass = blackCount === 1 ? 'count-danger' : ''
+  const whiteCountClass = whiteCount === 1 ? 'count-danger' : ''
   return `
     <div class="board ${colorClass} ${dimmed ? 'board-dimmed' : ''}" data-board="${bp}">
       <div class="board-header">
-        <span class="board-name">${BOARD_LABEL[bp]}</span>
-        <span class="board-count">黒:${blackCount} 白:${whiteCount}</span>
+        <span class="board-name">${screenLabel}</span>
+        <span class="board-count"><span class="${blackCountClass}">黒:${blackCount}</span> <span class="${whiteCountClass}">白:${whiteCount}</span></span>
       </div>
       <div class="board-cells">${cells.join('')}</div>
     </div>
@@ -238,6 +256,9 @@ function renderResult(game: GameState): string {
 export function renderGame(container: HTMLElement, game: GameState, handlers: GameHandlers): void {
   const isCpuThinking = game.mode === 'VS_CPU' && game.currentPlayer !== game.humanPlayer && game.phase !== 'GAME_OVER'
   const canCancel = game.phase === 'PASSIVE_CONFIRM' || game.phase === 'AGGRESSIVE_SELECT' || game.phase === 'AGGRESSIVE_CONFIRM'
+  // 後攻（白）でプレイ中は自陣が画面下に来るよう表示だけ反転させる（ゲーム内部の座標・ロジックは不変）
+  const flipped = game.humanPlayer === 'WHITE'
+  const boardOrder = boardRenderOrder(flipped)
 
   const movableCells = computeMovableCells(game)
   const destinationCells = computeDestinationCells(game)
@@ -252,11 +273,11 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
         <button id="btn-rules" type="button">ℹ ルール</button>
         <button id="btn-reset" type="button">↺ リセット</button>
       </div>
-      ${isCpuThinking ? '<div class="cpu-thinking">CPU 思考中…</div>' : ''}
       <div class="board-grid">
         <div class="border-label">ボーダー</div>
-        ${ALL_BOARD_POSITIONS.map((bp) => renderBoard(bp, game, movableCells, destinationCells, dimmedBoards.has(bp))).join('')}
+        ${boardOrder.map((bp, i) => renderBoard(bp, SCREEN_SLOT_LABELS[i], flipped, game, movableCells, destinationCells, dimmedBoards.has(bp))).join('')}
       </div>
+      ${isCpuThinking ? '<div class="cpu-thinking">CPU 思考中…</div>' : ''}
       ${game.phase === 'GAME_OVER' ? renderResult(game) : ''}
     </section>
   `
