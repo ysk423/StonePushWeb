@@ -1,11 +1,11 @@
-# GitHub Pages 公開手順（簡易版）
+# GitHub Pages 公開手順
 
 > Stone Push Web版（Vite + TypeScript、フレームワークなし）を GitHub Pages で公開するための手順書。
 > 初回公開は完了済み：**https://ysk423.github.io/StonePushWeb/**
-> GitHub Actions は使わず、`gh-pages` コマンド1つでローカルから直接公開する方式（一番シンプル）。
-> 慣れて自動化したくなったら Actions 化を検討すればよい。
 >
-> 1〜6は初回セットアップの記録（実施済み）。**今後コードを変更したときは 7章「更新したいとき」だけ読めばOK**。
+> **現在の方式：GitHub Actions による自動デプロイ**（`main` に push するだけで自動ビルド＆公開）。
+> 1〜6は最初に `gh-pages` コマンドで手動公開したときの記録（参考・過去のやり方）。
+> **今後コードを変更したときは 7章「GitHub Actions化した後の更新手順」だけ読めばOK**。
 
 ---
 
@@ -97,13 +97,9 @@ npm run deploy
 
 ---
 
-## 7. 更新したいとき（今後の変更のデプロイ手順）
+## 7. GitHub Actions化した後の更新手順（今はこれだけでOK）
 
-コードを変更するたびに、この2ステップだけでOK。
-
-### 7.1 変更内容を `main` に記録する（推奨・基本の流れ）
-
-`stone-push-web` フォルダで実行：
+コードを変更したら、**`main` に push するだけ**。ビルドと公開は GitHub 側が自動でやってくれる。
 
 ```bash
 git add -A
@@ -112,41 +108,92 @@ git commit -m "変更内容の説明"
 git push
 ```
 
-### 7.2 公開サイトに反映する
+- push をトリガーに `.github/workflows/deploy.yml` が動き、`npm ci` → `npm run build` → `dist/` を GitHub Pages にデプロイ、まで自動実行される
+- GitHub のリポジトリページ → **Actions** タブで進行状況（緑チェック＝成功、赤×＝失敗）を確認できる
+- 数分待ってから `https://ysk423.github.io/StonePushWeb/` を再読み込み（反映されない場合はスーパーリロード）
 
-`stone-push-web` フォルダ（`package.json` がある場所）でターミナルに以下を打つだけ：
-
-```bash
-npm run deploy
-```
-
-- 内部で `npm run build`（型チェック＋ビルド）→ `gh-pages -d dist` が実行され、`dist/` の中身が `gh-pages` ブランチにプッシュされる
-- 数分待ってから `https://ysk423.github.io/StonePushWeb/` を再読み込みすれば反映されている（キャッシュが残る場合はスーパーリロード）
-
-### 補足：なぜ `git push`（7.1）だけでは公開に反映されないか
-
-- `main` ブランチには**ソースコード**（TypeScriptなど、ビルド前のファイル）が入っている
-- ブラウザに配信されるのは**ビルド後のJS/CSS**（`dist/`の中身）
-- GitHub の Settings → Pages では「Branch: `gh-pages`」を指定しているので、GitHubは`gh-pages`ブランチの中身だけを公開している
-- `git push`は`main`を更新するだけで、`gh-pages`ブランチには一切触れない
-- `gh-pages`ブランチを更新できるのは`npm run deploy`（ローカルで`npm run build`→できた`dist/`を`gh-pages`ブランチとして手動でプッシュする）だけ
-
-つまり「`main`にpush」＝ソースの記録、「`npm run deploy`」＝公開反映、で役割が分かれている。**両方やって初めて公開サイトに変更が反映される**（7.1だけでは反映されない）。
-
-> `git push`だけで公開まで自動化したい場合は、GitHub Actionsに切り替えることで実現できる（`main`へのpushをトリガーに自動ビルド＆公開）。必要になったら別途対応する。
-
-### 補足
-
-- `git push`（main更新）と `npm run deploy`（公開サイト更新）は**別操作**。7.1をせずに7.2だけ実行しても公開はできる（「mainにはまだ出したくない変更を試しに公開してみる」も可能）が、`main` の履歴と公開中の内容がずれるので、基本は **7.1 → 7.2 の順**にする
-- まとめて1コマンドにしたい場合は `package.json` の `scripts` に以下を追加してもよい（コミットメッセージを毎回変えたいので自動化はしていない）：
-  ```json
-  "release": "git push && npm run deploy"
-  ```
+`npm run deploy`（8章の旧方式）はもう実行しなくてよい。
 
 ---
 
-## 8. うまく表示されないときのチェックリスト
+## 8. GitHub Actionsへの切り替え作業（実施記録）
+
+もともとは `gh-pages` コマンドでの手動公開（1〜6章）だったが、Actionsによる自動化に切り替えた。
+
+### 8.1 追加したファイル
+
+**リポジトリのルート直下**（`stone-push-web` フォルダの1つ上、`.git` がある場所）に `.github/workflows/deploy.yml` を作成：
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: stone-push-web/package-lock.json
+      - run: npm ci
+        working-directory: stone-push-web
+      - run: npm run build
+        working-directory: stone-push-web
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: stone-push-web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+> **重要**：このリポジトリは `stone-push-web` フォルダ自体ではなく、その1つ上のフォルダ（`.git` がある場所）がルート。ワークフロー内で `working-directory: stone-push-web` や `path: stone-push-web/dist` のように毎回パスを指定しているのはそのため。
+
+### 8.2 GitHub側で必要な設定変更（Web画面での操作・要対応）
+
+1. `https://github.com/ysk423/StonePushWeb` → **Settings** → **Pages**
+2. 「Build and deployment」の **Source** を、今までの **Deploy from a branch** から **GitHub Actions** に変更して保存
+
+これをやらないと、Actionsが動いても公開先（Pagesの配信元）が古いままの `gh-pages` ブランチを見続けてしまう。**この設定変更だけはWeb画面上の操作なので、忘れずに手動で行うこと。**
+
+### 8.3 動作確認
+
+1. `.github/workflows/deploy.yml` をコミットして `main` に push
+2. Actions タブでワークフローが成功するのを確認
+3. `https://ysk423.github.io/StonePushWeb/` を開いて表示されるか確認
+
+### 8.4 旧方式（`gh-pages` ブランチ）の後始末
+
+Actionsに完全移行したあとは、`package.json` の `deploy` スクリプトと `devDependencies` の `gh-pages` は不要になる（残しておいても害はないが、掃除したい場合は削除してよい）。`gh-pages` ブランチ自体もGitHub上で削除して構わない（Pagesの配信元をActionsに切り替えた後は参照されない）。
+
+---
+
+## 9. うまく表示されないときのチェックリスト
 
 - 真っ白になる → `vite.config.ts` の `base` がリポジトリ名と一致しているか確認
-- 404になる → Settings → Pages の Branch 設定が `gh-pages` になっているか確認
+- Actionsが失敗する → Actionsタブでログを開き、`npm ci` / `npm run build` のどちらで落ちているか確認（`working-directory` の指定漏れが典型的な原因）
+- 404になる → Settings → Pages の Source が **GitHub Actions** になっているか確認（`gh-pages` ブランチ指定のままだと反映されない）
 - 反映されない → デプロイ直後は数分ラグがあるので少し待ってから再読み込み（キャッシュも疑ってスーパーリロード）
