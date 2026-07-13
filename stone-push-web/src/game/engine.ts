@@ -65,6 +65,7 @@ export function initialState(
     humanPlayer,
     selectedPassiveFrom: null,
     passiveMove: null,
+    selectedAggressiveFrom: null,
     winner: null,
   }
 }
@@ -180,6 +181,7 @@ export function applyPassiveMove(state: GameState, move: Move): GameState {
     phase: 'AGGRESSIVE_SELECT',
     selectedPassiveFrom: null,
     passiveMove: move,
+    selectedAggressiveFrom: null,
   }
 }
 
@@ -209,6 +211,7 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
       winner,
       passiveMove: null,
       selectedPassiveFrom: null,
+      selectedAggressiveFrom: null,
     }
   }
   return {
@@ -218,6 +221,7 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
     currentPlayer: opponentOf(player),
     passiveMove: null,
     selectedPassiveFrom: null,
+    selectedAggressiveFrom: null,
   }
 }
 
@@ -243,7 +247,17 @@ export function cancelPassiveSelection(state: GameState): GameState {
   return { ...state, phase: 'PASSIVE_SELECT', selectedPassiveFrom: null }
 }
 
-// AGGRESSIVE_SELECT: キャンセル → パッシブ移動を手動で逆適用してPASSIVE_SELECTへ戻る
+// AGGRESSIVE_SELECT: 石を選択 → AGGRESSIVE_CONFIRM（方向・歩数はpassiveMove由来で固定のため移動先は一意に決まる）
+export function selectAggressiveStone(state: GameState, boardPosition: BoardPosition, pos: Pos): GameState {
+  return { ...state, phase: 'AGGRESSIVE_CONFIRM', selectedAggressiveFrom: { boardPosition, pos } }
+}
+
+// AGGRESSIVE_CONFIRM: 同じ石を再タップ → AGGRESSIVE_SELECTへ戻る（選択解除のみ、パッシブ移動は維持）
+export function cancelAggressiveSelection(state: GameState): GameState {
+  return { ...state, phase: 'AGGRESSIVE_SELECT', selectedAggressiveFrom: null }
+}
+
+// AGGRESSIVE_SELECT / AGGRESSIVE_CONFIRM: キャンセル → パッシブ移動を手動で逆適用してPASSIVE_SELECTへ戻る
 export function cancelAggressiveAndRevertPassive(state: GameState): GameState {
   if (!state.passiveMove) return state
   const boards = cloneBoards(state.boards)
@@ -256,5 +270,6 @@ export function cancelAggressiveAndRevertPassive(state: GameState): GameState {
     phase: 'PASSIVE_SELECT',
     passiveMove: null,
     selectedPassiveFrom: null,
+    selectedAggressiveFrom: null,
   }
 }

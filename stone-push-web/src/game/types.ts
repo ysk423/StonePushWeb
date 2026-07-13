@@ -6,7 +6,8 @@ export type BoardColor = 'DARK' | 'LIGHT'
 
 export type BoardPosition = 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT'
 
-export type TurnPhase = 'PASSIVE_SELECT' | 'PASSIVE_CONFIRM' | 'AGGRESSIVE_SELECT' | 'GAME_OVER'
+// AGGRESSIVE_SELECT: 動かす石を選ぶ／AGGRESSIVE_CONFIRM: 選んだ石の移動先（一意に決まる）を確定する
+export type TurnPhase = 'PASSIVE_SELECT' | 'PASSIVE_CONFIRM' | 'AGGRESSIVE_SELECT' | 'AGGRESSIVE_CONFIRM' | 'GAME_OVER'
 
 export type Difficulty = 'EASY' | 'NORMAL' | 'HARD'
 
@@ -79,6 +80,8 @@ export interface GameState {
   selectedPassiveFrom: { boardPosition: BoardPosition; pos: Pos } | null
   // AGGRESSIVE_SELECT: 適用済みのパッシブ移動（方向・歩数の引き継ぎ、及びキャンセル時の巻き戻しに使用）
   passiveMove: Move | null
+  // AGGRESSIVE_CONFIRM: どの石を選択中か
+  selectedAggressiveFrom: { boardPosition: BoardPosition; pos: Pos } | null
   winner: Player | null
 }
 

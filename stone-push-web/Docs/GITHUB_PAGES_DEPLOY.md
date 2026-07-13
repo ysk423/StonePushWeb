@@ -183,7 +183,7 @@ jobs:
 
 1. `.github/workflows/deploy.yml` をコミットして `main` に push
 2. Actions タブでワークフローが成功するのを確認
-3. `https://ysk423.github.io/StonePushWeb/` を開いて表示されるか確認
+3. `https://ysk423.github.io/StonePushWeb/` を開いて表示されるか確認a
 
 ### 8.4 旧方式（`gh-pages` ブランチ）の後始末
 

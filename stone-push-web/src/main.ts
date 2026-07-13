@@ -82,13 +82,31 @@ function handleCellClick(boardPosition: BoardPosition, pos: Pos): void {
   }
 
   if (game.phase === 'AGGRESSIVE_SELECT' && game.passiveMove) {
+    const isMovable = engine
+      .legalAggressiveMoves(game, game.passiveMove)
+      .some((m) => m.boardPosition === boardPosition && posEquals(m.from, pos))
+    if (isMovable) {
+      setState({ screen: 'game', game: engine.selectAggressiveStone(game, boardPosition, pos) })
+    } else {
+      // ハイライトされていない場所をタップ → パッシブ移動を巻き戻してキャンセル
+      setState({ screen: 'game', game: engine.cancelAggressiveAndRevertPassive(game) })
+    }
+    return
+  }
+
+  if (game.phase === 'AGGRESSIVE_CONFIRM' && game.passiveMove && game.selectedAggressiveFrom) {
+    const sel = game.selectedAggressiveFrom
+    if (sel.boardPosition === boardPosition && posEquals(sel.pos, pos)) {
+      setState({ screen: 'game', game: engine.cancelAggressiveSelection(game) })
+      return
+    }
+    // 選んだ石の移動先は方向・歩数固定のため一意に決まる
     const chosen = engine
       .legalAggressiveMoves(game, game.passiveMove)
-      .find((m) => m.boardPosition === boardPosition && posEquals(m.to, pos))
+      .find((m) => m.boardPosition === sel.boardPosition && posEquals(m.from, sel.pos) && m.boardPosition === boardPosition && posEquals(m.to, pos))
     if (chosen) {
       setState({ screen: 'game', game: engine.applyAggressiveMove(game, chosen) })
     } else {
-      // ハイライトされていない場所をタップ → パッシブ移動を巻き戻してキャンセル
       setState({ screen: 'game', game: engine.cancelAggressiveAndRevertPassive(game) })
     }
   }
@@ -99,6 +117,7 @@ function handleCancel(): void {
   const game = appState.game
   if (game.phase === 'PASSIVE_CONFIRM') setState({ screen: 'game', game: engine.cancelPassiveSelection(game) })
   else if (game.phase === 'AGGRESSIVE_SELECT') setState({ screen: 'game', game: engine.cancelAggressiveAndRevertPassive(game) })
+  else if (game.phase === 'AGGRESSIVE_CONFIRM') setState({ screen: 'game', game: engine.cancelAggressiveSelection(game) })
 }
 
 function scheduleCpuTurnIfNeeded(): void {

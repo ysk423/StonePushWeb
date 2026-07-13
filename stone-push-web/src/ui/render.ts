@@ -78,12 +78,12 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers): vo
           <div class="rules-board-cell board-light">左下（LIGHT）<br>黒ホーム</div>
           <div class="rules-board-cell board-dark">右下（DARK）<br>黒ホーム</div>
         </div>
-        <p class="rules-caption">中央の境界線が「ロープライン」。初期配置は全4ボード共通で、黒は一番手前の行、白は一番奥の行に4個ずつ並ぶ。</p>
+        <p class="rules-caption">中央の境界線が「ボーダー」（対局画面にも同じ位置に表示される）。初期配置は全4ボード共通で、黒は一番手前の行、白は一番奥の行に4個ずつ並ぶ。</p>
 
         <h2>2. ターンの流れ</h2>
-        <p>1ターン＝「セット（パッシブ移動）」と「プッシュ（アグレッシブ移動）」を<strong>必ず両方</strong>行う。先手は黒。</p>
+        <p>1ターン＝「リード（パッシブ移動）」と「フォロー（アグレッシブ移動）」を<strong>必ず両方</strong>行う。先手は黒。</p>
 
-        <h2>3. セット（パッシブ移動）</h2>
+        <h2>3. リード（パッシブ移動）</h2>
         <ul>
           <li>自分のホームボード（2枚のうちどちらか）で、自分の石を1つ選ぶ</li>
           <li>縦・横・斜め（8方向）に1〜2マス動かす</li>
@@ -91,16 +91,16 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers): vo
           <li>自分の石をボード外に出すことはできない</li>
         </ul>
 
-        <h2>4. プッシュ（アグレッシブ移動）</h2>
+        <h2>4. フォロー（アグレッシブ移動）</h2>
         <ul>
-          <li>セットで使ったボードと<strong>逆色</strong>のボード（自分・相手どちらのホームでもよい）で行う</li>
-          <li>移動方向・歩数はセットと<strong>同じ</strong>（変更不可）</li>
+          <li>リードで使ったボードと<strong>逆色</strong>のボード（自分・相手どちらのホームでもよい）で行う</li>
+          <li>動かす石を選ぶと、移動方向・歩数はリードと<strong>同じ</strong>に固定されるため、移動先は自動的に1マスに決まる（確認のうえタップで確定）</li>
           <li>相手の石は1個までなら押し出せる（押さなくてもよい）</li>
           <li>相手の石を2個以上連続で押すことはできない</li>
           <li>自分の石を途中や目的地に押す・飛び越すことはできない</li>
           <li>押し出された相手の石はボード外に消える（復活しない）</li>
         </ul>
-        <p class="rules-caption">セットした結果、プッシュできる手が1つも無い場合、そのセット自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。</p>
+        <p class="rules-caption">リードした結果、フォローできる手が1つも無い場合、そのリード自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。</p>
 
         <h2>5. 勝利条件</h2>
         <p>4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。</p>
@@ -125,7 +125,7 @@ function computeMovableCells(game: GameState): Set<string> {
   return set
 }
 
-// フェーズごとに「移動先候補」の集合を算出
+// フェーズごとに「移動先候補」の集合を算出（AGGRESSIVE_CONFIRMは選んだ石1つ分のみ＝方向・歩数固定のため常に1マス）
 function computeDestinationCells(game: GameState): Set<string> {
   const set = new Set<string>()
   if (game.phase === 'PASSIVE_CONFIRM' && game.selectedPassiveFrom) {
@@ -133,16 +133,19 @@ function computeDestinationCells(game: GameState): Set<string> {
     for (const m of legalPassiveMoves(game)) {
       if (m.boardPosition === sel.boardPosition && posEquals(m.from, sel.pos)) set.add(cellKey(m.boardPosition, m.to))
     }
-  } else if (game.phase === 'AGGRESSIVE_SELECT' && game.passiveMove) {
-    for (const m of legalAggressiveMoves(game, game.passiveMove)) set.add(cellKey(m.boardPosition, m.to))
+  } else if (game.phase === 'AGGRESSIVE_CONFIRM' && game.passiveMove && game.selectedAggressiveFrom) {
+    const sel = game.selectedAggressiveFrom
+    for (const m of legalAggressiveMoves(game, game.passiveMove)) {
+      if (m.boardPosition === sel.boardPosition && posEquals(m.from, sel.pos)) set.add(cellKey(m.boardPosition, m.to))
+    }
   }
   return set
 }
 
-// アグレッシブフェーズで使用できないボード（パッシブと同色）
+// アグレッシブフェーズ（石選択・移動先確定の両方）で使用できないボード（パッシブと同色）
 function computeDimmedBoards(game: GameState): Set<BoardPosition> {
   const set = new Set<BoardPosition>()
-  if (game.phase === 'AGGRESSIVE_SELECT' && game.passiveMove) {
+  if ((game.phase === 'AGGRESSIVE_SELECT' || game.phase === 'AGGRESSIVE_CONFIRM') && game.passiveMove) {
     const passiveColor = BOARD_COLOR_OF[game.passiveMove.boardPosition]
     for (const bp of ALL_BOARD_POSITIONS) {
       if (BOARD_COLOR_OF[bp] === passiveColor) set.add(bp)
@@ -154,11 +157,13 @@ function computeDimmedBoards(game: GameState): Set<BoardPosition> {
 function phaseLabel(game: GameState): string {
   switch (game.phase) {
     case 'PASSIVE_SELECT':
-      return '動かす石を選んでください（セット）'
+      return '動かす石を選んでください（リード）'
     case 'PASSIVE_CONFIRM':
-      return '移動先を選んでください（セット）'
+      return '移動先を選んでください（リード）'
     case 'AGGRESSIVE_SELECT':
-      return '逆色のボードで移動先を選んでください（プッシュ）'
+      return '逆色のボードで動かす石を選んでください（フォロー）'
+    case 'AGGRESSIVE_CONFIRM':
+      return '移動先を確定してください（フォロー）'
     case 'GAME_OVER':
       return 'ゲーム終了'
   }
@@ -187,7 +192,9 @@ function renderBoard(
       const key = cellKey(bp, pos)
       const isMovable = movableCells.has(key)
       const isDestination = destinationCells.has(key)
-      const isSelected = !!game.selectedPassiveFrom && game.selectedPassiveFrom.boardPosition === bp && posEquals(game.selectedPassiveFrom.pos, pos)
+      const isSelected =
+        (!!game.selectedPassiveFrom && game.selectedPassiveFrom.boardPosition === bp && posEquals(game.selectedPassiveFrom.pos, pos)) ||
+        (!!game.selectedAggressiveFrom && game.selectedAggressiveFrom.boardPosition === bp && posEquals(game.selectedAggressiveFrom.pos, pos))
       const isDimmedOwnStone = game.phase === 'PASSIVE_SELECT' && owner === game.currentPlayer && !isMovable
 
       const classes = ['cell']
@@ -230,7 +237,7 @@ function renderResult(game: GameState): string {
 
 export function renderGame(container: HTMLElement, game: GameState, handlers: GameHandlers): void {
   const isCpuThinking = game.mode === 'VS_CPU' && game.currentPlayer !== game.humanPlayer && game.phase !== 'GAME_OVER'
-  const canCancel = game.phase === 'PASSIVE_CONFIRM' || game.phase === 'AGGRESSIVE_SELECT'
+  const canCancel = game.phase === 'PASSIVE_CONFIRM' || game.phase === 'AGGRESSIVE_SELECT' || game.phase === 'AGGRESSIVE_CONFIRM'
 
   const movableCells = computeMovableCells(game)
   const destinationCells = computeDestinationCells(game)
@@ -247,6 +254,7 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
       </div>
       ${isCpuThinking ? '<div class="cpu-thinking">CPU 思考中…</div>' : ''}
       <div class="board-grid">
+        <div class="border-label">ボーダー</div>
         ${ALL_BOARD_POSITIONS.map((bp) => renderBoard(bp, game, movableCells, destinationCells, dimmedBoards.has(bp))).join('')}
       </div>
       ${game.phase === 'GAME_OVER' ? renderResult(game) : ''}
