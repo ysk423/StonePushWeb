@@ -1,17 +1,21 @@
 # GitHub Pages 公開手順（簡易版）
 
 > Stone Push Web版（Vite + TypeScript、フレームワークなし）を GitHub Pages で公開するための手順書。
-> まだ実施していない（Docs/PROJECT_BRIEF.md の「今後の作業」に該当）。
+> 初回公開は完了済み：**https://ysk423.github.io/StonePushWeb/**
 > GitHub Actions は使わず、`gh-pages` コマンド1つでローカルから直接公開する方式（一番シンプル）。
 > 慣れて自動化したくなったら Actions 化を検討すればよい。
+>
+> 1〜6は初回セットアップの記録（実施済み）。**今後コードを変更したときは 7章「更新したいとき」だけ読めばOK**。
 
 ---
 
-## 0. 前提
+## 0. 前提（初回セットアップ時点のもの）
 
 - GitHub アカウントを持っていること
 - ローカルに Git がインストールされていること
 - `stone-push-web` フォルダはまだ Git 管理下にない（`git init` 未実施）
+
+> ステータス：✅ 完了。`stone-push-web` は `main` ブランチで `origin`（`git@github.com:ysk423/StonePushWeb.git`）に接続済み。
 
 ---
 
@@ -89,17 +93,55 @@ npm run deploy
    Branch を **gh-pages** / **`/(root)`** に設定して Save
 3. 数分待つと `https://ysk423.github.io/StonePushWeb/` で公開される
 
+> ステータス：✅ 完了。公開確認済み。
+
 ---
 
-## 7. 更新したいとき
+## 7. 更新したいとき（今後の変更のデプロイ手順）
 
-コードを直したら、コミットして（任意）、もう一度これだけでOK：
+コードを変更するたびに、この2ステップだけでOK。
+
+### 7.1 変更内容を `main` に記録する（推奨・基本の流れ）
+
+`stone-push-web` フォルダで実行：
+
+```bash
+git add -A
+git status               # 意図した差分だけがステージされているか確認してから進める
+git commit -m "変更内容の説明"
+git push
+```
+
+### 7.2 公開サイトに反映する
+
+`stone-push-web` フォルダ（`package.json` がある場所）でターミナルに以下を打つだけ：
 
 ```bash
 npm run deploy
 ```
 
-`main` への push とは別操作なので、「`main` にはまだ出したくない変更を試しに公開してみる」ということもできる（が、基本は main を更新してから deploy するのが分かりやすい）。
+- 内部で `npm run build`（型チェック＋ビルド）→ `gh-pages -d dist` が実行され、`dist/` の中身が `gh-pages` ブランチにプッシュされる
+- 数分待ってから `https://ysk423.github.io/StonePushWeb/` を再読み込みすれば反映されている（キャッシュが残る場合はスーパーリロード）
+
+### 補足：なぜ `git push`（7.1）だけでは公開に反映されないか
+
+- `main` ブランチには**ソースコード**（TypeScriptなど、ビルド前のファイル）が入っている
+- ブラウザに配信されるのは**ビルド後のJS/CSS**（`dist/`の中身）
+- GitHub の Settings → Pages では「Branch: `gh-pages`」を指定しているので、GitHubは`gh-pages`ブランチの中身だけを公開している
+- `git push`は`main`を更新するだけで、`gh-pages`ブランチには一切触れない
+- `gh-pages`ブランチを更新できるのは`npm run deploy`（ローカルで`npm run build`→できた`dist/`を`gh-pages`ブランチとして手動でプッシュする）だけ
+
+つまり「`main`にpush」＝ソースの記録、「`npm run deploy`」＝公開反映、で役割が分かれている。**両方やって初めて公開サイトに変更が反映される**（7.1だけでは反映されない）。
+
+> `git push`だけで公開まで自動化したい場合は、GitHub Actionsに切り替えることで実現できる（`main`へのpushをトリガーに自動ビルド＆公開）。必要になったら別途対応する。
+
+### 補足
+
+- `git push`（main更新）と `npm run deploy`（公開サイト更新）は**別操作**。7.1をせずに7.2だけ実行しても公開はできる（「mainにはまだ出したくない変更を試しに公開してみる」も可能）が、`main` の履歴と公開中の内容がずれるので、基本は **7.1 → 7.2 の順**にする
+- まとめて1コマンドにしたい場合は `package.json` の `scripts` に以下を追加してもよい（コミットメッセージを毎回変えたいので自動化はしていない）：
+  ```json
+  "release": "git push && npm run deploy"
+  ```
 
 ---
 

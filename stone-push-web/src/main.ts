@@ -3,9 +3,10 @@ import * as engine from './game/engine'
 import { chooseCpuTurn } from './game/ai'
 import type { BoardPosition, GameMode, GameState, Player, Pos } from './game/types'
 import { posEquals } from './game/types'
-import { renderGame, renderStart } from './ui/render'
+import { renderGame, renderRules, renderStart } from './ui/render'
 
-type AppState = { screen: 'start' } | { screen: 'game'; game: GameState }
+type MainScreen = { screen: 'start' } | { screen: 'game'; game: GameState }
+type AppState = MainScreen | { screen: 'rules'; returnTo: MainScreen }
 
 let appState: AppState = { screen: 'start' }
 
@@ -18,7 +19,12 @@ function setState(next: AppState): void {
 
 function render(): void {
   if (appState.screen === 'start') {
-    renderStart(root, { onStart: startGame })
+    renderStart(root, { onStart: startGame, onOpenRules: () => openRules(appState as MainScreen) })
+    return
+  }
+  if (appState.screen === 'rules') {
+    const returnTo = appState.returnTo
+    renderRules(root, { onBack: () => setState(returnTo) })
     return
   }
   renderGame(root, appState.game, {
@@ -26,8 +32,13 @@ function render(): void {
     onCancel: handleCancel,
     onReset: resetGame,
     onBackToMenu: () => setState({ screen: 'start' }),
+    onOpenRules: () => openRules(appState as MainScreen),
   })
   scheduleCpuTurnIfNeeded()
+}
+
+function openRules(returnTo: MainScreen): void {
+  setState({ screen: 'rules', returnTo })
 }
 
 function startGame(mode: GameMode, humanPlayer: Player): void {

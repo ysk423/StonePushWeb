@@ -15,6 +15,7 @@ import {
 
 export interface StartHandlers {
   onStart: (mode: GameMode, humanPlayer: Player) => void
+  onOpenRules: () => void
 }
 
 export interface GameHandlers {
@@ -22,6 +23,11 @@ export interface GameHandlers {
   onCancel: () => void
   onReset: () => void
   onBackToMenu: () => void
+  onOpenRules: () => void
+}
+
+export interface RulesHandlers {
+  onBack: () => void
 }
 
 const BOARD_LABEL: Record<BoardPosition, string> = {
@@ -44,12 +50,64 @@ export function renderStart(container: HTMLElement, handlers: StartHandlers): vo
           <button id="btn-vs-cpu-black" type="button" class="menu-btn">先攻（黒）でプレイ</button>
           <button id="btn-vs-cpu-white" type="button" class="menu-btn">後攻（白）でプレイ</button>
         </div>
+        <button id="btn-rules" type="button" class="menu-btn menu-btn-secondary">ℹ ルール説明</button>
       </div>
     </section>
   `
   container.querySelector('#btn-vs-human')!.addEventListener('click', () => handlers.onStart('VS_HUMAN', 'BLACK'))
   container.querySelector('#btn-vs-cpu-black')!.addEventListener('click', () => handlers.onStart('VS_CPU', 'BLACK'))
   container.querySelector('#btn-vs-cpu-white')!.addEventListener('click', () => handlers.onStart('VS_CPU', 'WHITE'))
+  container.querySelector('#btn-rules')!.addEventListener('click', handlers.onOpenRules)
+}
+
+export function renderRules(container: HTMLElement, handlers: RulesHandlers): void {
+  container.innerHTML = `
+    <section id="rules-screen">
+      <div class="toolbar">
+        <button id="btn-rules-back" type="button">← 戻る</button>
+        <div class="phase-indicator">ルール説明</div>
+        <span></span>
+      </div>
+
+      <div class="rules-content">
+        <h2>1. 盤面構成</h2>
+        <p>4×4のボードが2×2で合計4枚並ぶ。左上と右下が <strong>DARK</strong>、右上と左下が <strong>LIGHT</strong>（対角が同色）。上段2枚が白のホーム、下段2枚が黒のホーム。</p>
+        <div class="rules-board-diagram">
+          <div class="rules-board-cell board-dark">左上（DARK）<br>白ホーム</div>
+          <div class="rules-board-cell board-light">右上（LIGHT）<br>白ホーム</div>
+          <div class="rules-board-cell board-light">左下（LIGHT）<br>黒ホーム</div>
+          <div class="rules-board-cell board-dark">右下（DARK）<br>黒ホーム</div>
+        </div>
+        <p class="rules-caption">中央の境界線が「ロープライン」。初期配置は全4ボード共通で、黒は一番手前の行、白は一番奥の行に4個ずつ並ぶ。</p>
+
+        <h2>2. ターンの流れ</h2>
+        <p>1ターン＝「セット（パッシブ移動）」と「プッシュ（アグレッシブ移動）」を<strong>必ず両方</strong>行う。先手は黒。</p>
+
+        <h2>3. セット（パッシブ移動）</h2>
+        <ul>
+          <li>自分のホームボード（2枚のうちどちらか）で、自分の石を1つ選ぶ</li>
+          <li>縦・横・斜め（8方向）に1〜2マス動かす</li>
+          <li>途中のマスや移動先に石がある場合は動かせない（押せない・飛び越せない）</li>
+          <li>自分の石をボード外に出すことはできない</li>
+        </ul>
+
+        <h2>4. プッシュ（アグレッシブ移動）</h2>
+        <ul>
+          <li>セットで使ったボードと<strong>逆色</strong>のボード（自分・相手どちらのホームでもよい）で行う</li>
+          <li>移動方向・歩数はセットと<strong>同じ</strong>（変更不可）</li>
+          <li>相手の石は1個までなら押し出せる（押さなくてもよい）</li>
+          <li>相手の石を2個以上連続で押すことはできない</li>
+          <li>自分の石を途中や目的地に押す・飛び越すことはできない</li>
+          <li>押し出された相手の石はボード外に消える（復活しない）</li>
+        </ul>
+        <p class="rules-caption">セットした結果、プッシュできる手が1つも無い場合、そのセット自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。</p>
+
+        <h2>5. 勝利条件</h2>
+        <p>4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。</p>
+      </div>
+    </section>
+  `
+  container.querySelector('#btn-rules-back')!.addEventListener('click', handlers.onBack)
 }
 
 function cellKey(bp: BoardPosition, pos: Pos): string {
@@ -184,6 +242,7 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
         <button id="btn-back" type="button">← 戻る</button>
         <div class="phase-indicator">${PLAYER_LABEL[game.currentPlayer]}の番 ・ ${phaseLabel(game)}</div>
         <button id="btn-cancel" type="button" ${canCancel ? '' : 'disabled'}>✕ キャンセル</button>
+        <button id="btn-rules" type="button">ℹ ルール</button>
         <button id="btn-reset" type="button">↺ リセット</button>
       </div>
       ${isCpuThinking ? '<div class="cpu-thinking">CPU 思考中…</div>' : ''}
@@ -204,6 +263,7 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
   })
   container.querySelector('#btn-back')?.addEventListener('click', handlers.onBackToMenu)
   container.querySelector('#btn-cancel')?.addEventListener('click', handlers.onCancel)
+  container.querySelector('#btn-rules')?.addEventListener('click', handlers.onOpenRules)
   container.querySelector('#btn-reset')?.addEventListener('click', handlers.onReset)
   container.querySelector('#btn-play-again')?.addEventListener('click', handlers.onReset)
   container.querySelector('#btn-to-menu')?.addEventListener('click', handlers.onBackToMenu)

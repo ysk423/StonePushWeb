@@ -182,7 +182,8 @@ export function legalPassiveMoves(state: GameState): Move[] {
 ### 状態管理方式（`main.ts`）
 
 ```ts
-type AppState = { screen: 'start' } | { screen: 'game'; game: GameState }
+type MainScreen = { screen: 'start' } | { screen: 'game'; game: GameState }
+type AppState = MainScreen | { screen: 'rules'; returnTo: MainScreen }
 
 let appState: AppState = { screen: 'start' }
 
@@ -193,7 +194,8 @@ function setState(next: AppState) {
 ```
 
 - `setState` を呼ぶたびに `render()` が画面全体を再構築する（部分更新はしない）
-- ルーティングは無く、`AppState` の `screen` の値だけで start画面/game画面を切り替える単一ページアプリ
+- ルーティングは無く、`AppState` の `screen` の値だけで start画面/game画面/rules画面を切り替える単一ページアプリ
+- `rules` 画面は `returnTo` に遷移元（`MainScreen`＝start か game のいずれか、game の場合は `GameState` ごと）を持たせることで、「← 戻る」で元の画面をそのままの状態で復元できる。`AppState` の再帰定義を避けるため、`returnTo` の型を `MainScreen`（`rules` を除いた部分union）に限定している
 
 ### クリック処理の流れ（`handleCellClick`）
 

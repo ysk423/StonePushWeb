@@ -67,6 +67,73 @@ body {
   cursor: pointer;
 }
 
+.menu-btn-secondary {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+/* ---------- ルール説明画面 ---------- */
+
+.rules-content {
+  text-align: left;
+  padding: 0 4px 32px;
+}
+
+.rules-content h2 {
+  font-size: 1.05rem;
+  margin: 24px 0 8px;
+}
+
+.rules-content h2:first-child {
+  margin-top: 8px;
+}
+
+.rules-content ul {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+
+.rules-content li {
+  margin: 4px 0;
+}
+
+.rules-caption {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.rules-board-diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 3px;
+  background: var(--rope-line);
+  border: 3px solid var(--rope-line);
+  border-radius: 4px;
+  max-width: 280px;
+  margin: 12px 0;
+}
+
+.rules-board-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 8px;
+}
+
+.rules-board-cell.board-dark {
+  background: var(--board-dark);
+  color: var(--stone-white);
+}
+
+.rules-board-cell.board-light {
+  background: var(--board-light);
+  color: var(--stone-black);
+}
+
 .menu-btn:hover {
   background: var(--highlight);
 }
