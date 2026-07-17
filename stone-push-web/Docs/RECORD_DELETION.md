@@ -1,6 +1,6 @@
 # 戦績ランキングデータの削除手順（RECORD_DELETION.md）
 
-> `records`コレクション（戦績ランキング、詳細は `LEADERBOARD.md`）に登録されたデータを削除する手順書。
+> `records`コレクション（戦績ランキング、詳細は `design.md` 10章）に登録されたデータを削除する手順書。
 > セキュリティルール（`firestore.rules`）でクライアントからの`update`/`delete`は禁止しているため、削除はFirebase Console操作か、管理者（あなた）のPCからのFirebase CLI操作でのみ行える。
 
 ---
