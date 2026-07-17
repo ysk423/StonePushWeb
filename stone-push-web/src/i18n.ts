@@ -48,6 +48,8 @@ export interface Dict {
   r4Caption: string
   r5Title: string
   r5Body: string
+  r6Title: string
+  r6Body: string
 
   // ランキング画面
   rankingTitle: string
@@ -133,6 +135,9 @@ const ja: Dict = {
   r4Caption: 'リードした結果、フォローできる手が1つも無い場合、そのリード自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。',
   r5Title: '5. 勝利条件',
   r5Body: '4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。',
+  r6Title: '6. 戦績ランキング',
+  r6Body:
+    '<strong>vs CPU</strong>であなたが勝利すると、結果画面から名前を入力してランキングに登録できます（vs 人間の対局は登録対象外です）。',
 
   rankingTitle: 'ランキング',
   categoryCpuEasy: 'CPU（よわい）',
@@ -217,6 +222,9 @@ const en: Dict = {
     'If a Lead move would leave no legal Follow move, that Lead move cannot be selected in the first place (it won’t appear as an option).',
   r5Title: '5. Win Condition',
   r5Body: 'The first player to push <strong>all 4 of the opponent’s stones off any single board</strong> wins.',
+  r6Title: '6. Ranking',
+  r6Body:
+    'If you win a game <strong>vs CPU</strong>, you can enter your name on the result screen to add it to the ranking (games vs Human are not eligible).',
 
   rankingTitle: 'Ranking',
   categoryCpuEasy: 'CPU (Easy)',

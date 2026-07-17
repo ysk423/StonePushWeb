@@ -230,7 +230,8 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
       turnCount,
     }
   }
-  return {
+
+  const nextState: GameState = {
     ...state,
     boards,
     phase: 'PASSIVE_SELECT',
@@ -240,6 +241,14 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
     selectedAggressiveFrom: null,
     turnCount,
   }
+
+  // 完全デッドロック（次の手番に合法なリードが1つも無い）は反則負けとして即GAME_OVERにする。
+  // これが無いとCPU側のchooseCpuTurnが手の無い状態で呼ばれ例外を投げ、画面が固まる。
+  if (legalPassiveMoves(nextState).length === 0) {
+    return { ...nextState, phase: 'GAME_OVER', winner: player }
+  }
+
+  return nextState
 }
 
 // 勝者の4ボード合計の自石残数（戦績記録の「残り石数」に使う）。勝者が決まっていなければ0
