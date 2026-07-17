@@ -11,6 +11,7 @@ export interface Dict {
   playBlack: string
   playWhite: string
   rulesLink: string
+  rankingLink: string
   langButton: string
   back: string
   cancel: string
@@ -47,6 +48,29 @@ export interface Dict {
   r4Caption: string
   r5Title: string
   r5Body: string
+
+  // ランキング画面
+  rankingTitle: string
+  categoryHuman: string
+  categoryCpuEasy: string
+  categoryCpuNormal: string
+  categoryCpuHard: string
+  rankCol: string
+  nameCol: string
+  movesCol: string
+  stonesCol: string
+  rankingLoading: string
+  rankingError: string
+  rankingEmpty: string
+
+  // 対局結果画面の名前入力ダイアログ
+  recordDialogTitle: string
+  recordNamePlaceholder: string
+  recordSubmit: string
+  recordSkip: string
+  recordSubmitting: string
+  recordDone: string
+  recordError: string
 }
 
 const ja: Dict = {
@@ -59,6 +83,7 @@ const ja: Dict = {
   playBlack: '先攻（黒）でプレイ',
   playWhite: '後攻（白）でプレイ',
   rulesLink: 'ℹ ルール説明',
+  rankingLink: '🏆 ランキング',
   langButton: 'English',
   back: '← 戻る',
   cancel: '✕ キャンセル',
@@ -109,6 +134,27 @@ const ja: Dict = {
   r4Caption: 'リードした結果、フォローできる手が1つも無い場合、そのリード自体を選ぶことはできない（画面上でも最初から選択肢に出ない）。',
   r5Title: '5. 勝利条件',
   r5Body: '4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。',
+
+  rankingTitle: 'ランキング',
+  categoryHuman: 'vs 人間',
+  categoryCpuEasy: 'CPU（よわい）',
+  categoryCpuNormal: 'CPU（ふつう）',
+  categoryCpuHard: 'CPU（つよい）',
+  rankCol: '順位',
+  nameCol: '名前',
+  movesCol: '手数',
+  stonesCol: '残り石数',
+  rankingLoading: '読み込み中…',
+  rankingError: '読み込みに失敗しました',
+  rankingEmpty: 'まだ記録がありません',
+
+  recordDialogTitle: '勝利おめでとうございます！名前を入力するとランキングに登録できます',
+  recordNamePlaceholder: '名前（16文字まで）',
+  recordSubmit: '登録する',
+  recordSkip: 'スキップ',
+  recordSubmitting: '送信中…',
+  recordDone: '登録しました！',
+  recordError: '登録に失敗しました。通信環境をご確認のうえもう一度お試しください',
 }
 
 const en: Dict = {
@@ -121,6 +167,7 @@ const en: Dict = {
   playBlack: 'Play as Black (first)',
   playWhite: 'Play as White (second)',
   rulesLink: 'ℹ How to Play',
+  rankingLink: '🏆 Ranking',
   langButton: '日本語',
   back: '← Back',
   cancel: '✕ Cancel',
@@ -172,6 +219,27 @@ const en: Dict = {
     'If a Lead move would leave no legal Follow move, that Lead move cannot be selected in the first place (it won’t appear as an option).',
   r5Title: '5. Win Condition',
   r5Body: 'The first player to push <strong>all 4 of the opponent’s stones off any single board</strong> wins.',
+
+  rankingTitle: 'Ranking',
+  categoryHuman: 'vs Human',
+  categoryCpuEasy: 'CPU (Easy)',
+  categoryCpuNormal: 'CPU (Normal)',
+  categoryCpuHard: 'CPU (Hard)',
+  rankCol: 'Rank',
+  nameCol: 'Name',
+  movesCol: 'Moves',
+  stonesCol: 'Stones Left',
+  rankingLoading: 'Loading…',
+  rankingError: 'Failed to load',
+  rankingEmpty: 'No records yet',
+
+  recordDialogTitle: 'You won! Enter your name to add it to the ranking',
+  recordNamePlaceholder: 'Name (up to 16 characters)',
+  recordSubmit: 'Submit',
+  recordSkip: 'Skip',
+  recordSubmitting: 'Submitting…',
+  recordDone: 'Recorded!',
+  recordError: 'Failed to submit. Please check your connection and try again',
 }
 
 export function getDict(lang: Lang): Dict {

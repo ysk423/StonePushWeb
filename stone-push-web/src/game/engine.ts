@@ -67,6 +67,7 @@ export function initialState(
     passiveMove: null,
     selectedAggressiveFrom: null,
     winner: null,
+    turnCount: 0,
   }
 }
 
@@ -215,6 +216,7 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
   }
   board.stones[posKey(resolution.destination)] = player
 
+  const turnCount = state.turnCount + 1
   const winner = checkWinner(boards)
   if (winner) {
     return {
@@ -225,6 +227,7 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
       passiveMove: null,
       selectedPassiveFrom: null,
       selectedAggressiveFrom: null,
+      turnCount,
     }
   }
   return {
@@ -235,7 +238,18 @@ export function applyAggressiveMove(state: GameState, move: Move): GameState {
     passiveMove: null,
     selectedPassiveFrom: null,
     selectedAggressiveFrom: null,
+    turnCount,
   }
+}
+
+// 勝者の4ボード合計の自石残数（戦績記録の「残り石数」に使う）。勝者が決まっていなければ0
+export function winnerStoneCount(state: GameState): number {
+  if (!state.winner) return 0
+  let count = 0
+  for (const bp of ALL_BOARD_POSITIONS) {
+    count += Object.values(state.boards[bp].stones).filter((owner) => owner === state.winner).length
+  }
+  return count
 }
 
 // いずれかのボードで相手の石が0個になっていれば、直前に動いたプレイヤーの勝利

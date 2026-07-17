@@ -14,13 +14,18 @@ import {
   posKey,
 } from '../game/types'
 import { getDict, type Dict, type Lang } from '../i18n'
+import type { RankingEntry, RecordCategory } from '../records'
 
 export interface StartHandlers {
   onStart: (mode: GameMode, humanPlayer: Player) => void
   onOpenRules: () => void
+  onOpenRanking: () => void
   onToggleLang: () => void
   onSelectDifficulty: (difficulty: Difficulty) => void
 }
+
+// 対局結果画面の名前入力ダイアログの状態。main.ts側でFirestoreへの送信状況に応じて管理する
+export type RecordSubmitStatus = 'idle' | 'submitting' | 'done' | 'skipped' | 'error'
 
 export interface GameHandlers {
   onCellClick: (boardPosition: BoardPosition, pos: Pos) => void
@@ -28,10 +33,53 @@ export interface GameHandlers {
   onReset: () => void
   onBackToMenu: () => void
   onOpenRules: () => void
+  onSubmitRecord: (name: string) => void
+  onSkipRecord: () => void
 }
 
 export interface RulesHandlers {
   onBack: () => void
+}
+
+// ランキング画面。ロード中はnull、失敗時は'error'
+export type RankingData = RankingEntry[] | 'error' | null
+
+export interface RankingHandlers {
+  onBack: () => void
+  onSelectCategory: (category: RecordCategory) => void
+}
+
+const RANKING_CATEGORIES: RecordCategory[] = ['HUMAN', 'CPU_EASY', 'CPU_NORMAL', 'CPU_HARD']
+
+function categoryLabel(category: RecordCategory, dict: Dict): string {
+  switch (category) {
+    case 'HUMAN':
+      return dict.categoryHuman
+    case 'CPU_EASY':
+      return dict.categoryCpuEasy
+    case 'CPU_NORMAL':
+      return dict.categoryCpuNormal
+    case 'CPU_HARD':
+      return dict.categoryCpuHard
+  }
+}
+
+// Firestoreから取得した文字列（プレイヤー名）はユーザー由来の未検証データなので、innerHTMLに差し込む前に必ずエスケープする
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (ch) => {
+    switch (ch) {
+      case '&':
+        return '&amp;'
+      case '<':
+        return '&lt;'
+      case '>':
+        return '&gt;'
+      case '"':
+        return '&quot;'
+      default:
+        return '&#39;'
+    }
+  })
 }
 
 // 後攻（白）でプレイする場合は自陣（白ホーム）が画面下側に来るよう上下の並びを入れ替える。左右のDARK/LIGHT配置は変えない
@@ -81,6 +129,7 @@ export function renderStart(container: HTMLElement, handlers: StartHandlers, lan
         </div>
         <button id="btn-vs-human" type="button" class="menu-btn">${dict.vsHuman}</button>
         <button id="btn-rules" type="button" class="menu-btn menu-btn-secondary">${dict.rulesLink}</button>
+        <button id="btn-ranking" type="button" class="menu-btn menu-btn-secondary">${dict.rankingLink}</button>
         <button id="btn-lang-toggle" type="button" class="menu-btn menu-btn-secondary">${dict.langButton}</button>
       </div>
     </section>
@@ -89,6 +138,7 @@ export function renderStart(container: HTMLElement, handlers: StartHandlers, lan
   container.querySelector('#btn-vs-cpu-black')!.addEventListener('click', () => handlers.onStart('VS_CPU', 'BLACK'))
   container.querySelector('#btn-vs-cpu-white')!.addEventListener('click', () => handlers.onStart('VS_CPU', 'WHITE'))
   container.querySelector('#btn-rules')!.addEventListener('click', handlers.onOpenRules)
+  container.querySelector('#btn-ranking')!.addEventListener('click', handlers.onOpenRanking)
   container.querySelector('#btn-lang-toggle')!.addEventListener('click', handlers.onToggleLang)
   container.querySelectorAll<HTMLButtonElement>('.difficulty-btn').forEach((btn) => {
     btn.addEventListener('click', () => handlers.onSelectDifficulty(btn.dataset.difficulty as Difficulty))
@@ -136,6 +186,58 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers, lan
     </section>
   `
   container.querySelector('#btn-rules-back')!.addEventListener('click', handlers.onBack)
+}
+
+export function renderRanking(
+  container: HTMLElement,
+  handlers: RankingHandlers,
+  lang: Lang,
+  category: RecordCategory,
+  data: RankingData,
+): void {
+  const dict = getDict(lang)
+
+  const tabs = RANKING_CATEGORIES.map(
+    (c) => `<button data-category="${c}" type="button" class="category-tab ${c === category ? 'selected' : ''}">${categoryLabel(c, dict)}</button>`,
+  ).join('')
+
+  let body: string
+  if (data === null) {
+    body = `<p class="ranking-status">${dict.rankingLoading}</p>`
+  } else if (data === 'error') {
+    body = `<p class="ranking-status">${dict.rankingError}</p>`
+  } else if (data.length === 0) {
+    body = `<p class="ranking-status">${dict.rankingEmpty}</p>`
+  } else {
+    const rows = data
+      .map(
+        (entry, i) =>
+          `<tr><td>${i + 1}</td><td>${escapeHtml(entry.playerName)}</td><td>${entry.moveCount}</td><td>${entry.stonesRemaining}</td></tr>`,
+      )
+      .join('')
+    body = `
+      <table class="ranking-table">
+        <thead><tr><th>${dict.rankCol}</th><th>${dict.nameCol}</th><th>${dict.movesCol}</th><th>${dict.stonesCol}</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `
+  }
+
+  container.innerHTML = `
+    <section id="ranking-screen">
+      <div class="toolbar">
+        <button id="btn-ranking-back" type="button">${dict.back}</button>
+        <div class="phase-indicator">${dict.rankingTitle}</div>
+        <span></span>
+      </div>
+      <div class="category-tabs">${tabs}</div>
+      ${body}
+    </section>
+  `
+  container.querySelector('#btn-ranking-back')!.addEventListener('click', handlers.onBack)
+  container.querySelectorAll<HTMLButtonElement>('.category-tab').forEach((btn) => {
+    btn.addEventListener('click', () => handlers.onSelectCategory(btn.dataset.category as RecordCategory))
+  })
 }
 
 function cellKey(bp: BoardPosition, pos: Pos): string {
@@ -258,12 +360,42 @@ function renderBoard(
   `
 }
 
-function renderResult(game: GameState, dict: Dict): string {
+// vs人間はどちらが勝っても人間の記録。vs CPUは人間側が勝った時のみ記録対象（CPU側の勝利は記録しない）
+function shouldOfferRecord(game: GameState): boolean {
+  return game.mode === 'VS_HUMAN' || game.winner === game.humanPlayer
+}
+
+function renderRecordSection(dict: Dict, status: RecordSubmitStatus): string {
+  switch (status) {
+    case 'idle':
+    case 'error':
+      return `
+        ${status === 'error' ? `<p class="record-error">${dict.recordError}</p>` : ''}
+        <form id="record-form" class="record-form">
+          <p>${dict.recordDialogTitle}</p>
+          <input id="record-name-input" name="name" type="text" maxlength="16" required placeholder="${dict.recordNamePlaceholder}" />
+          <div class="record-form-actions">
+            <button type="submit" class="menu-btn">${dict.recordSubmit}</button>
+            <button type="button" id="btn-record-skip" class="menu-btn menu-btn-secondary">${dict.recordSkip}</button>
+          </div>
+        </form>
+      `
+    case 'submitting':
+      return `<p class="record-status">${dict.recordSubmitting}</p>`
+    case 'done':
+      return `<p class="record-status">${dict.recordDone}</p>`
+    case 'skipped':
+      return ''
+  }
+}
+
+function renderResult(game: GameState, dict: Dict, recordStatus: RecordSubmitStatus): string {
   const winnerLabel = game.winner === 'BLACK' ? dict.playerBlack : game.winner === 'WHITE' ? dict.playerWhite : ''
   return `
     <div class="result-overlay">
       <div class="result-card">
         <h2>${dict.win(winnerLabel)}</h2>
+        ${shouldOfferRecord(game) ? renderRecordSection(dict, recordStatus) : ''}
         <button id="btn-play-again" type="button" class="menu-btn">${dict.playAgain}</button>
         <button id="btn-to-menu" type="button" class="menu-btn">${dict.backToMenu}</button>
       </div>
@@ -271,7 +403,13 @@ function renderResult(game: GameState, dict: Dict): string {
   `
 }
 
-export function renderGame(container: HTMLElement, game: GameState, handlers: GameHandlers, lang: Lang): void {
+export function renderGame(
+  container: HTMLElement,
+  game: GameState,
+  handlers: GameHandlers,
+  lang: Lang,
+  recordStatus: RecordSubmitStatus,
+): void {
   const dict = getDict(lang)
   const isCpuThinking = game.mode === 'VS_CPU' && game.currentPlayer !== game.humanPlayer && game.phase !== 'GAME_OVER'
   const canCancel = game.phase === 'PASSIVE_CONFIRM' || game.phase === 'AGGRESSIVE_SELECT' || game.phase === 'AGGRESSIVE_CONFIRM'
@@ -298,7 +436,7 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
         <div class="border-label">${dict.border}</div>
       </div>
       ${isCpuThinking ? `<div class="cpu-thinking">${dict.cpuThinking}</div>` : ''}
-      ${game.phase === 'GAME_OVER' ? renderResult(game, dict) : ''}
+      ${game.phase === 'GAME_OVER' ? renderResult(game, dict, recordStatus) : ''}
     </section>
   `
 
@@ -316,4 +454,11 @@ export function renderGame(container: HTMLElement, game: GameState, handlers: Ga
   container.querySelector('#btn-reset')?.addEventListener('click', handlers.onReset)
   container.querySelector('#btn-play-again')?.addEventListener('click', handlers.onReset)
   container.querySelector('#btn-to-menu')?.addEventListener('click', handlers.onBackToMenu)
+  container.querySelector('#btn-record-skip')?.addEventListener('click', handlers.onSkipRecord)
+  container.querySelector('#record-form')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const input = container.querySelector<HTMLInputElement>('#record-name-input')
+    const name = input?.value.trim() ?? ''
+    if (name) handlers.onSubmitRecord(name)
+  })
 }

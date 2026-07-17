@@ -4,10 +4,11 @@ import { chooseCpuTurn } from './game/ai'
 import type { BoardPosition, Difficulty, Direction, GameMode, GameState, Move, Player, Pos } from './game/types'
 import { posEquals } from './game/types'
 import type { Lang } from './i18n'
-import { renderGame, renderRules, renderStart } from './ui/render'
+import { categoryFor, fetchRanking, submitRecord, type GameRecord, type RecordCategory } from './records'
+import { renderGame, renderRanking, renderRules, renderStart, type RankingData, type RecordSubmitStatus } from './ui/render'
 
 type MainScreen = { screen: 'start' } | { screen: 'game'; game: GameState }
-type AppState = MainScreen | { screen: 'rules'; returnTo: MainScreen }
+type AppState = MainScreen | { screen: 'rules'; returnTo: MainScreen } | { screen: 'ranking' }
 
 let appState: AppState = { screen: 'start' }
 // フォロー（アグレッシブ移動）の押し出しアニメーション中は、盤面がまだ確定前の見た目のため操作を無効化する
@@ -16,6 +17,11 @@ let isAnimating = false
 let lang: Lang = 'en'
 // vs CPU開始時に使う難易度。スタート画面の難易度ボタンで選択する（デフォルトはよわい＝ランダム）
 let cpuDifficulty: Difficulty = 'EASY'
+// 対局結果画面の名前入力ダイアログの送信状況。新しい対局を始めるたびに'idle'へ戻す
+let recordSubmitStatus: RecordSubmitStatus = 'idle'
+// ランキング画面で表示中のカテゴリと取得済みデータ（nullはロード中、'error'は取得失敗）
+let rankingCategory: RecordCategory = 'HUMAN'
+let rankingData: RankingData = null
 
 const root = document.querySelector<HTMLDivElement>('#app')!
 
@@ -120,6 +126,7 @@ function render(): void {
       {
         onStart: startGame,
         onOpenRules: () => openRules(appState as MainScreen),
+        onOpenRanking: openRanking,
         onToggleLang: toggleLang,
         onSelectDifficulty: selectDifficulty,
       },
@@ -133,6 +140,16 @@ function render(): void {
     renderRules(root, { onBack: () => setState(returnTo) }, lang)
     return
   }
+  if (appState.screen === 'ranking') {
+    renderRanking(
+      root,
+      { onBack: () => setState({ screen: 'start' }), onSelectCategory: selectRankingCategory },
+      lang,
+      rankingCategory,
+      rankingData,
+    )
+    return
+  }
   renderGame(
     root,
     appState.game,
@@ -142,8 +159,11 @@ function render(): void {
       onReset: resetGame,
       onBackToMenu: () => setState({ screen: 'start' }),
       onOpenRules: () => openRules(appState as MainScreen),
+      onSubmitRecord: submitCurrentRecord,
+      onSkipRecord: skipRecord,
     },
     lang,
+    recordSubmitStatus,
   )
   scheduleCpuTurnIfNeeded()
 }
@@ -152,13 +172,73 @@ function openRules(returnTo: MainScreen): void {
   setState({ screen: 'rules', returnTo })
 }
 
+function openRanking(): void {
+  rankingData = null
+  setState({ screen: 'ranking' })
+  loadRanking(rankingCategory)
+}
+
+function selectRankingCategory(category: RecordCategory): void {
+  rankingCategory = category
+  rankingData = null
+  render()
+  loadRanking(category)
+}
+
+// フェッチ完了時、既に画面や表示中カテゴリが変わっていたら結果を無視する（古いレスポンスでの上書き防止）
+function loadRanking(category: RecordCategory): void {
+  fetchRanking(category)
+    .then((entries) => {
+      if (appState.screen !== 'ranking' || rankingCategory !== category) return
+      rankingData = entries
+      render()
+    })
+    .catch((err) => {
+      console.error(err)
+      if (appState.screen !== 'ranking' || rankingCategory !== category) return
+      rankingData = 'error'
+      render()
+    })
+}
+
+function submitCurrentRecord(name: string): void {
+  if (appState.screen !== 'game') return
+  const game = appState.game
+  if (game.phase !== 'GAME_OVER' || !game.winner) return
+  recordSubmitStatus = 'submitting'
+  render()
+  const record: GameRecord = {
+    playerName: name,
+    category: categoryFor(game.mode, game.difficulty),
+    moveCount: game.turnCount,
+    stonesRemaining: engine.winnerStoneCount(game),
+  }
+  submitRecord(record)
+    .then(() => {
+      recordSubmitStatus = 'done'
+      render()
+    })
+    .catch((err) => {
+      console.error(err)
+      recordSubmitStatus = 'error'
+      render()
+    })
+}
+
+function skipRecord(): void {
+  recordSubmitStatus = 'skipped'
+  render()
+}
+
 function startGame(mode: GameMode, humanPlayer: Player): void {
+  recordSubmitStatus = 'idle'
   setState({ screen: 'game', game: engine.initialState(mode, cpuDifficulty, humanPlayer, 'BLACK') })
 }
 
 function resetGame(): void {
   if (appState.screen !== 'game') return
   const { mode, difficulty, humanPlayer } = appState.game
+  recordSubmitStatus = 'idle'
   setState({ screen: 'game', game: engine.initialState(mode, difficulty, humanPlayer, 'BLACK') })
 }
 

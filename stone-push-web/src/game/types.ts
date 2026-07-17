@@ -83,6 +83,8 @@ export interface GameState {
   // AGGRESSIVE_CONFIRM: どの石を選択中か
   selectedAggressiveFrom: { boardPosition: BoardPosition; pos: Pos } | null
   winner: Player | null
+  // 成立したターン（リード+フォロー）の数。戦績記録の「手数」に使う
+  turnCount: number
 }
 
 export function posKey(pos: Pos): string {

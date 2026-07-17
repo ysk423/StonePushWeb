@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /records/{recordId} {
+      // 読み取りは誰でも可能（ランキングは全員が閲覧できる想定）
+      allow read: if true;
+
+      // 新規作成のみ許可。更新・削除はクライアントから一切不可（Console/Admin SDKのみ）
+      allow update, delete: if false;
+      allow create: if
+        request.resource.data.keys().hasOnly(['playerName', 'category', 'moveCount', 'stonesRemaining', 'createdAt']) &&
+        request.resource.data.playerName is string &&
+        request.resource.data.playerName.size() > 0 &&
+        request.resource.data.playerName.size() <= 16 &&
+        request.resource.data.category in ['HUMAN', 'CPU_EASY', 'CPU_NORMAL', 'CPU_HARD'] &&
+        request.resource.data.moveCount is int &&
+        request.resource.data.moveCount > 0 &&
+        request.resource.data.moveCount <= 200 &&
+        request.resource.data.stonesRemaining is int &&
+        request.resource.data.stonesRemaining >= 0 &&
+        request.resource.data.stonesRemaining <= 16 &&
+        request.resource.data.createdAt == request.time;
+    }
+  }
+}
