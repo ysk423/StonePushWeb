@@ -20,7 +20,7 @@ let cpuDifficulty: Difficulty = 'EASY'
 // 対局結果画面の名前入力ダイアログの送信状況。新しい対局を始めるたびに'idle'へ戻す
 let recordSubmitStatus: RecordSubmitStatus = 'idle'
 // ランキング画面で表示中のカテゴリと取得済みデータ（nullはロード中、'error'は取得失敗）
-let rankingCategory: RecordCategory = 'HUMAN'
+let rankingCategory: RecordCategory = 'CPU_EASY'
 let rankingData: RankingData = null
 
 const root = document.querySelector<HTMLDivElement>('#app')!
@@ -204,12 +204,13 @@ function loadRanking(category: RecordCategory): void {
 function submitCurrentRecord(name: string): void {
   if (appState.screen !== 'game') return
   const game = appState.game
-  if (game.phase !== 'GAME_OVER' || !game.winner) return
+  // vs人間は記録対象外（render.ts側でフォーム自体を出していないが、念のためここでも弾く）
+  if (game.phase !== 'GAME_OVER' || !game.winner || game.mode !== 'VS_CPU') return
   recordSubmitStatus = 'submitting'
   render()
   const record: GameRecord = {
     playerName: name,
-    category: categoryFor(game.mode, game.difficulty),
+    category: categoryFor(game.difficulty),
     moveCount: game.turnCount,
     stonesRemaining: engine.winnerStoneCount(game),
   }

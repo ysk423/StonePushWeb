@@ -51,7 +51,6 @@ export interface Dict {
 
   // ランキング画面
   rankingTitle: string
-  categoryHuman: string
   categoryCpuEasy: string
   categoryCpuNormal: string
   categoryCpuHard: string
@@ -136,7 +135,6 @@ const ja: Dict = {
   r5Body: '4枚のボードのうち、<strong>いずれか1枚から相手の石を4個すべて押し出した</strong>プレイヤーの勝利。',
 
   rankingTitle: 'ランキング',
-  categoryHuman: 'vs 人間',
   categoryCpuEasy: 'CPU（よわい）',
   categoryCpuNormal: 'CPU（ふつう）',
   categoryCpuHard: 'CPU（つよい）',
@@ -221,7 +219,6 @@ const en: Dict = {
   r5Body: 'The first player to push <strong>all 4 of the opponent’s stones off any single board</strong> wins.',
 
   rankingTitle: 'Ranking',
-  categoryHuman: 'vs Human',
   categoryCpuEasy: 'CPU (Easy)',
   categoryCpuNormal: 'CPU (Normal)',
   categoryCpuHard: 'CPU (Hard)',

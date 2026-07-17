@@ -1,9 +1,10 @@
 // 戦績（records コレクション）へのアクセスをこのモジュールに閉じ込め、main.ts/render.tsからFirestoreの詳細を隠蔽する
+// vs人間（パス＆プレイ）は記録対象外。vs CPUで人間が勝った場合のみ記録する（render.tsのshouldOfferRecord参照）
 import { addDoc, collection, getDocs, limit, orderBy, query, serverTimestamp, where } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Difficulty, GameMode } from './game/types'
+import type { Difficulty } from './game/types'
 
-export type RecordCategory = 'HUMAN' | 'CPU_EASY' | 'CPU_NORMAL' | 'CPU_HARD'
+export type RecordCategory = 'CPU_EASY' | 'CPU_NORMAL' | 'CPU_HARD'
 
 export interface GameRecord {
   playerName: string
@@ -20,8 +21,7 @@ const RECORDS_COLLECTION = 'records'
 const RANKING_LIMIT = 50
 const NAME_MAX_LENGTH = 16
 
-export function categoryFor(mode: GameMode, difficulty: Difficulty): RecordCategory {
-  if (mode === 'VS_HUMAN') return 'HUMAN'
+export function categoryFor(difficulty: Difficulty): RecordCategory {
   switch (difficulty) {
     case 'EASY':
       return 'CPU_EASY'

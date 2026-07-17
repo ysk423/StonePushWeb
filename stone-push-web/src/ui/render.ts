@@ -49,12 +49,10 @@ export interface RankingHandlers {
   onSelectCategory: (category: RecordCategory) => void
 }
 
-const RANKING_CATEGORIES: RecordCategory[] = ['HUMAN', 'CPU_EASY', 'CPU_NORMAL', 'CPU_HARD']
+const RANKING_CATEGORIES: RecordCategory[] = ['CPU_EASY', 'CPU_NORMAL', 'CPU_HARD']
 
 function categoryLabel(category: RecordCategory, dict: Dict): string {
   switch (category) {
-    case 'HUMAN':
-      return dict.categoryHuman
     case 'CPU_EASY':
       return dict.categoryCpuEasy
     case 'CPU_NORMAL':
@@ -360,9 +358,9 @@ function renderBoard(
   `
 }
 
-// vs人間はどちらが勝っても人間の記録。vs CPUは人間側が勝った時のみ記録対象（CPU側の勝利は記録しない）
+// vs人間（パス＆プレイ）は記録対象外。vs CPUは人間側が勝った時のみ記録対象（CPU側の勝利は記録しない）
 function shouldOfferRecord(game: GameState): boolean {
-  return game.mode === 'VS_HUMAN' || game.winner === game.humanPlayer
+  return game.mode === 'VS_CPU' && game.winner === game.humanPlayer
 }
 
 function renderRecordSection(dict: Dict, status: RecordSubmitStatus): string {

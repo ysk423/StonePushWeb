@@ -12,7 +12,7 @@ service cloud.firestore {
         request.resource.data.playerName is string &&
         request.resource.data.playerName.size() > 0 &&
         request.resource.data.playerName.size() <= 16 &&
-        request.resource.data.category in ['HUMAN', 'CPU_EASY', 'CPU_NORMAL', 'CPU_HARD'] &&
+        request.resource.data.category in ['CPU_EASY', 'CPU_NORMAL', 'CPU_HARD'] &&
         request.resource.data.moveCount is int &&
         request.resource.data.moveCount > 0 &&
         request.resource.data.moveCount <= 200 &&
