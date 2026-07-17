@@ -120,6 +120,7 @@ function selectDifficulty(difficulty: Difficulty): void {
 }
 
 function render(): void {
+  document.documentElement.lang = lang // 言語切替をhtml lang属性にも反映（アクセシビリティ・SEO対策）
   if (appState.screen === 'start') {
     renderStart(
       root,

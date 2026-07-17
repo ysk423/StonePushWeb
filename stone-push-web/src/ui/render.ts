@@ -180,6 +180,9 @@ export function renderRules(container: HTMLElement, handlers: RulesHandlers, lan
 
         <h2>${dict.r5Title}</h2>
         <p>${dict.r5Body}</p>
+
+        <h2>${dict.r6Title}</h2>
+        <p>${dict.r6Body}</p>
       </div>
     </section>
   `
