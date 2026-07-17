@@ -1,7 +1,7 @@
 import './style.css'
 import * as engine from './game/engine'
 import { chooseCpuTurn } from './game/ai'
-import type { BoardPosition, Direction, GameMode, GameState, Move, Player, Pos } from './game/types'
+import type { BoardPosition, Difficulty, Direction, GameMode, GameState, Move, Player, Pos } from './game/types'
 import { posEquals } from './game/types'
 import type { Lang } from './i18n'
 import { renderGame, renderRules, renderStart } from './ui/render'
@@ -14,10 +14,12 @@ let appState: AppState = { screen: 'start' }
 let isAnimating = false
 // 言語切替はスタート画面のボタンのみで行うグローバル設定（デフォルトは英語）
 let lang: Lang = 'en'
+// vs CPU開始時に使う難易度。スタート画面の難易度ボタンで選択する（デフォルトはよわい＝ランダム）
+let cpuDifficulty: Difficulty = 'EASY'
 
 const root = document.querySelector<HTMLDivElement>('#app')!
 
-const PUSH_ANIMATION_MS = 260
+const PUSH_ANIMATION_MS = 400
 
 function findCellEl(boardPosition: BoardPosition, pos: Pos): HTMLElement | null {
   return root.querySelector(`.cell[data-board="${boardPosition}"][data-row="${pos.row}"][data-col="${pos.col}"]`)
@@ -106,9 +108,24 @@ function toggleLang(): void {
   render()
 }
 
+function selectDifficulty(difficulty: Difficulty): void {
+  cpuDifficulty = difficulty
+  render()
+}
+
 function render(): void {
   if (appState.screen === 'start') {
-    renderStart(root, { onStart: startGame, onOpenRules: () => openRules(appState as MainScreen), onToggleLang: toggleLang }, lang)
+    renderStart(
+      root,
+      {
+        onStart: startGame,
+        onOpenRules: () => openRules(appState as MainScreen),
+        onToggleLang: toggleLang,
+        onSelectDifficulty: selectDifficulty,
+      },
+      lang,
+      cpuDifficulty,
+    )
     return
   }
   if (appState.screen === 'rules') {
@@ -136,7 +153,7 @@ function openRules(returnTo: MainScreen): void {
 }
 
 function startGame(mode: GameMode, humanPlayer: Player): void {
-  setState({ screen: 'game', game: engine.initialState(mode, 'EASY', humanPlayer, 'BLACK') })
+  setState({ screen: 'game', game: engine.initialState(mode, cpuDifficulty, humanPlayer, 'BLACK') })
 }
 
 function resetGame(): void {

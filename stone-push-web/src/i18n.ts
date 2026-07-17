@@ -5,6 +5,9 @@ export interface Dict {
   title: string
   vsHuman: string
   vsCpuGroupTitle: string
+  difficultyEasy: string
+  difficultyNormal: string
+  difficultyHard: string
   playBlack: string
   playWhite: string
   rulesLink: string
@@ -49,7 +52,10 @@ export interface Dict {
 const ja: Dict = {
   title: 'Stone Push',
   vsHuman: 'vs 人間（パス＆プレイ）',
-  vsCpuGroupTitle: 'vs CPU（やさしい）',
+  vsCpuGroupTitle: 'vs CPU',
+  difficultyEasy: 'よわい',
+  difficultyNormal: 'ふつう',
+  difficultyHard: 'つよい',
   playBlack: '先攻（黒）でプレイ',
   playWhite: '後攻（白）でプレイ',
   rulesLink: 'ℹ ルール説明',
@@ -108,7 +114,10 @@ const ja: Dict = {
 const en: Dict = {
   title: 'Stone Push',
   vsHuman: 'vs Human (pass & play)',
-  vsCpuGroupTitle: 'vs CPU (Easy)',
+  vsCpuGroupTitle: 'vs CPU',
+  difficultyEasy: 'Easy',
+  difficultyNormal: 'Normal',
+  difficultyHard: 'Hard',
   playBlack: 'Play as Black (first)',
   playWhite: 'Play as White (second)',
   rulesLink: 'ℹ How to Play',

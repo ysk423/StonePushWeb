@@ -5,6 +5,7 @@ import {
   BOARD_COLOR_OF,
   BOARD_SIZE,
   type BoardPosition,
+  type Difficulty,
   type GameMode,
   type GameState,
   type Player,
@@ -18,6 +19,7 @@ export interface StartHandlers {
   onStart: (mode: GameMode, humanPlayer: Player) => void
   onOpenRules: () => void
   onToggleLang: () => void
+  onSelectDifficulty: (difficulty: Difficulty) => void
 }
 
 export interface GameHandlers {
@@ -37,13 +39,31 @@ function boardRenderOrder(flipped: boolean): BoardPosition[] {
   return flipped ? ['BOTTOM_LEFT', 'BOTTOM_RIGHT', 'TOP_LEFT', 'TOP_RIGHT'] : ALL_BOARD_POSITIONS
 }
 
-export function renderStart(container: HTMLElement, handlers: StartHandlers, lang: Lang): void {
+const DIFFICULTIES: Difficulty[] = ['EASY', 'NORMAL', 'HARD']
+
+function difficultyLabel(difficulty: Difficulty, dict: Dict): string {
+  switch (difficulty) {
+    case 'EASY':
+      return dict.difficultyEasy
+    case 'NORMAL':
+      return dict.difficultyNormal
+    case 'HARD':
+      return dict.difficultyHard
+  }
+}
+
+export function renderStart(container: HTMLElement, handlers: StartHandlers, lang: Lang, difficulty: Difficulty): void {
   const dict = getDict(lang)
   // スタート画面の装飾イラスト：実際の初期盤面をそのまま静的表示（操作不可）に流用
   const illustrationGame = initialState('VS_HUMAN', 'EASY', 'BLACK', 'BLACK')
   const emptyCells = new Set<string>()
   const illustrationBoards = ALL_BOARD_POSITIONS.map((bp, i) =>
     renderBoard(bp, dict.boardSlots[i], false, illustrationGame, emptyCells, emptyCells, false, dict),
+  ).join('')
+
+  const difficultyButtons = DIFFICULTIES.map(
+    (d) =>
+      `<button data-difficulty="${d}" type="button" class="difficulty-btn ${d === difficulty ? 'selected' : ''}">${difficultyLabel(d, dict)}</button>`,
   ).join('')
 
   container.innerHTML = `
@@ -53,12 +73,13 @@ export function renderStart(container: HTMLElement, handlers: StartHandlers, lan
         <div class="board-grid">${illustrationBoards}</div>
       </div>
       <div class="start-menu">
-        <button id="btn-vs-human" type="button" class="menu-btn">${dict.vsHuman}</button>
         <div class="vs-cpu-group">
           <p>${dict.vsCpuGroupTitle}</p>
+          <div class="difficulty-select">${difficultyButtons}</div>
           <button id="btn-vs-cpu-black" type="button" class="menu-btn">${dict.playBlack}</button>
           <button id="btn-vs-cpu-white" type="button" class="menu-btn">${dict.playWhite}</button>
         </div>
+        <button id="btn-vs-human" type="button" class="menu-btn">${dict.vsHuman}</button>
         <button id="btn-rules" type="button" class="menu-btn menu-btn-secondary">${dict.rulesLink}</button>
         <button id="btn-lang-toggle" type="button" class="menu-btn menu-btn-secondary">${dict.langButton}</button>
       </div>
@@ -69,6 +90,9 @@ export function renderStart(container: HTMLElement, handlers: StartHandlers, lan
   container.querySelector('#btn-vs-cpu-white')!.addEventListener('click', () => handlers.onStart('VS_CPU', 'WHITE'))
   container.querySelector('#btn-rules')!.addEventListener('click', handlers.onOpenRules)
   container.querySelector('#btn-lang-toggle')!.addEventListener('click', handlers.onToggleLang)
+  container.querySelectorAll<HTMLButtonElement>('.difficulty-btn').forEach((btn) => {
+    btn.addEventListener('click', () => handlers.onSelectDifficulty(btn.dataset.difficulty as Difficulty))
+  })
 }
 
 export function renderRules(container: HTMLElement, handlers: RulesHandlers, lang: Lang): void {
